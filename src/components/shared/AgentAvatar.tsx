@@ -1,6 +1,7 @@
-import type { Persona, RosterAgent } from '@/types';
+import type { Persona, RosterAgent, AgentStatus } from '@/types';
 import { resolvePersona } from '@/engine/MockLLM';
 import { motion } from 'framer-motion';
+import { useThemeStore } from '@/store/themeStore';
 
 interface AgentAvatarProps {
   agent: RosterAgent;
@@ -10,7 +11,15 @@ interface AgentAvatarProps {
   isActive?: boolean;
 }
 
-const STATUS_COLOR: Record<string, string> = {
+const STATUS_COLOR_LIGHT: Record<AgentStatus, string> = {
+  idle: 'rgba(20, 24, 36, 0.18)',
+  thinking: '#B8801E',
+  searching: '#2BA88E',
+  speaking: '#7565D6',
+  paused: '#C84A4D',
+};
+
+const STATUS_COLOR_DARK: Record<AgentStatus, string> = {
   idle: 'rgba(255,255,255,0.18)',
   thinking: '#E8B14C',
   searching: '#5FE0C7',
@@ -27,7 +36,11 @@ export function AgentAvatar({
 }: AgentAvatarProps) {
   const persona = resolvePersona(agent);
   const [c1, c2] = persona.gradient;
-  const ringColor = STATUS_COLOR[agent.status] || STATUS_COLOR.idle;
+  const theme = useThemeStore((s) => s.theme);
+  const map = theme === 'dark' ? STATUS_COLOR_DARK : STATUS_COLOR_LIGHT;
+  const ringColor = map[agent.status as AgentStatus] || map.idle;
+  const activeColor = theme === 'dark' ? '#E8B14C' : '#B8801E';
+  const overlayLight = theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.35)';
 
   return (
     <motion.button
@@ -63,14 +76,20 @@ export function AgentAvatar({
           style={{
             background: `linear-gradient(135deg, ${c1}, ${c2})`,
             boxShadow: isActive
-              ? `0 0 0 2px #E8B14C, 0 6px 24px -8px ${c1}`
-              : `0 6px 24px -8px ${c1}, inset 0 1px 0 rgba(255,255,255,0.15)`,
+              ? `0 0 0 2px ${activeColor}, 0 6px 24px -8px ${c1}`
+              : `0 6px 24px -8px ${c1}, inset 0 1px 0 ${overlayLight}`,
           }}
         >
-          <div className="absolute inset-0 bg-gradient-to-tr from-black/15 via-transparent to-white/15" />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(135deg, rgba(0,0,0,0.12), transparent 50%, rgba(255,255,255,0.18))',
+            }}
+          />
           <span
-            className="relative font-display text-cream-50"
-            style={{ fontSize: size * 0.42 }}
+            className="relative font-display text-white"
+            style={{ fontSize: size * 0.42, textShadow: '0 1px 2px rgba(0,0,0,0.25)' }}
           >
             {persona.emoji}
           </span>

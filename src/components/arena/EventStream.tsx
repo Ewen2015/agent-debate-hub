@@ -51,10 +51,10 @@ export function EventStream() {
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="font-display text-base text-cream-50">实时事件流</span>
+          <span className="font-display text-base text-[var(--text-primary)]">实时事件流</span>
           <Chip tone="mute">live</Chip>
         </div>
-        <span className="text-[10px] text-cream-50/40 tracking-widish uppercase">
+        <span className="text-[10px] text-[var(--text-primary)]/40 tracking-widish uppercase">
           {events.length} events
         </span>
       </div>
@@ -76,7 +76,7 @@ export function EventStream() {
                   transition={{ duration: 0.25 }}
                   className="flex items-start gap-2 text-[12px] leading-relaxed"
                 >
-                  <span className="font-mono text-cream-50/30 w-[60px] flex-shrink-0 pt-0.5">
+                  <span className="font-mono text-[var(--text-primary)]/30 w-[60px] flex-shrink-0 pt-0.5">
                     {fmt(e.ts)}
                   </span>
                   <Chip
@@ -86,13 +86,13 @@ export function EventStream() {
                     {meta.icon}
                     {meta.label}
                   </Chip>
-                  <span className="text-cream-50/65 flex-1">
-                    <span className="text-cream-50/90">{lookupName(e.agentId)}</span>
+                  <span className="text-[var(--text-primary)]/65 flex-1">
+                    <span className="text-[var(--text-primary)]/90">{lookupName(e.agentId)}</span>
                     {e.payload.subText ? (
-                      <span className="text-cream-50/40 ml-1">· {e.payload.subText}</span>
+                      <span className="text-[var(--text-primary)]/40 ml-1">· {e.payload.subText}</span>
                     ) : null}
                     {e.payload.text ? (
-                      <div className="text-cream-50/55 mt-0.5 line-clamp-2">
+                      <div className="text-[var(--text-primary)]/55 mt-0.5 line-clamp-2">
                         {e.payload.text}
                       </div>
                     ) : null}
@@ -102,7 +102,7 @@ export function EventStream() {
             })}
           </AnimatePresence>
           {events.length === 0 && (
-            <li className="text-cream-50/30 text-xs tracking-widish uppercase text-center py-6">
+            <li className="text-[var(--text-primary)]/30 text-xs tracking-widish uppercase text-center py-6">
               等待开始
             </li>
           )}

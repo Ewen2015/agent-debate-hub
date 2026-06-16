@@ -66,10 +66,10 @@ export function AgentRing() {
             >
               <AgentAvatar agent={agent} size={64} />
               <div className="text-center">
-                <div className="font-display text-sm text-cream-50 leading-tight">
+                <div className="font-display text-sm text-[var(--text-primary)] leading-tight">
                   {persona.name}
                 </div>
-                <div className="text-[10px] text-cream-50/45 tracking-widish uppercase mt-0.5 truncate max-w-[120px]">
+                <div className="text-[10px] text-[var(--text-primary)]/45 tracking-widish uppercase mt-0.5 truncate max-w-[120px]">
                   {persona.oneLiner}
                 </div>
                 <div className="flex items-center justify-center gap-1 mt-1.5">

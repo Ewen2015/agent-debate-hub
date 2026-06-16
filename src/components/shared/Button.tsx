@@ -14,19 +14,20 @@ interface ButtonProps {
   className?: string;
   fullWidth?: boolean;
   type?: 'button' | 'submit';
+  title?: string;
 }
 
 const variantClass: Record<Variant, string> = {
   primary:
-    'bg-gradient-to-b from-gold-300 to-gold-400 text-ink-900 hover:from-gold-200 hover:to-gold-300 shadow-glow',
+    'bg-gradient-to-b from-[var(--accent-gold)] to-[#A8761A] text-[var(--bg-elev)] hover:brightness-110',
   secondary:
-    'border border-gold-300/40 text-gold-200 hover:border-gold-300/80 hover:bg-gold-300/5',
+    'border border-[var(--border-strong)] text-[var(--accent-gold)] hover:bg-[var(--bg-card-strong)]',
   ghost:
-    'text-cream-50/80 hover:text-cream-50 hover:bg-white/[0.04]',
+    'text-[var(--text-soft)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card)]',
   danger:
-    'bg-rose-400/15 text-rose-300 border border-rose-400/30 hover:bg-rose-400/25',
+    'bg-[var(--accent-rose)]/12 text-[var(--accent-rose)] border border-[var(--accent-rose)]/30 hover:bg-[var(--accent-rose)]/20',
   subtle:
-    'bg-white/[0.04] text-cream-50/80 border border-white/10 hover:bg-white/[0.07]',
+    'bg-[var(--bg-card)] text-[var(--text-soft)] border border-[var(--border-soft)] hover:bg-[var(--bg-card-strong)]',
 };
 
 const sizeClass: Record<Size, string> = {
@@ -45,12 +46,14 @@ export function Button({
   className = '',
   fullWidth,
   type = 'button',
+  title,
 }: ButtonProps) {
   return (
     <motion.button
       type={type}
       onClick={onClick}
       disabled={disabled}
+      title={title}
       whileTap={{ scale: 0.97 }}
       whileHover={disabled ? undefined : { y: -1 }}
       transition={{ duration: 0.18 }}

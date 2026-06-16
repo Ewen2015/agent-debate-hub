@@ -128,6 +128,7 @@ export const DebateEngine = {
       payload: { text: 'Brainstorm 阶段结束。点击「进入 Debate」开始对抗推演。' },
     });
     setAgentStatus(agents[0]?.id || '', 'idle');
+    setPhase('idle');
   },
 
   async enterDebate() {

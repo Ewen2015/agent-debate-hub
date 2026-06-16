@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Check, Zap, Trash } from 'lucide-react';
+import { Plus, Trash2, Zap, Loader2, Check, X as XIcon } from 'lucide-react';
 import { useGatewayStore } from '@/store/staticStores';
 import { Button } from '@/components/shared/Button';
 import { Chip } from '@/components/shared/Chip';
@@ -13,6 +13,12 @@ const TEMPLATES: { id: ProviderTemplate; label: string; baseUrl: string; model: 
   { id: 'ollama', label: 'Ollama (本地)', baseUrl: 'http://localhost:11434/v1', model: 'llama3.2' },
   { id: 'custom', label: '自定义 OpenAI 兼容端点', baseUrl: '', model: '' },
 ];
+
+type TestStatus =
+  | { kind: 'idle' }
+  | { kind: 'running' }
+  | { kind: 'ok'; latency: number; modelEcho?: string }
+  | { kind: 'fail'; reason: string };
 
 export function GatewayPanel() {
   const providers = useGatewayStore((s) => s.providers);
@@ -40,8 +46,8 @@ export function GatewayPanel() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="text-[11px] text-cream-50/55 leading-relaxed">
-        配置 LLM Provider。当前为「模拟模式」时，Agent 行为由本地模板生成；填入 API Key 后自动启用真实 LLM 调用（本期默认仍以 Mock 形式呈现演示效果）。
+      <div className="text-[11px] text-[var(--text-soft)] leading-relaxed">
+        配置 LLM Provider。当前为「模拟模式」时，Agent 行为由本地模板生成；填入 API Key 后点击「测试连接」可立即验证端点可达性与凭据有效性。
       </div>
 
       <div className="divider-x" />
@@ -71,7 +77,7 @@ export function GatewayPanel() {
         </Button>
       ) : (
         <div className="glass rounded-xl p-3 space-y-2.5">
-          <div className="text-[10px] tracking-widest2 uppercase text-cream-50/45">
+          <div className="text-[10px] tracking-widest2 uppercase text-[var(--text-muted)]">
             New Provider
           </div>
           <div className="grid grid-cols-3 gap-1.5">
@@ -84,8 +90,8 @@ export function GatewayPanel() {
                 }}
                 className={`rounded-md px-2 py-1.5 text-[10px] uppercase tracking-widish transition-colors
                   ${newTpl === t.id
-                    ? 'bg-gold-300 text-ink-900'
-                    : 'bg-white/[0.04] text-cream-50/65 border border-white/8 hover:bg-white/[0.08]'}`}
+                    ? 'bg-[var(--accent-gold)] text-[var(--bg-elev)]'
+                    : 'bg-[var(--bg-card)] text-[var(--text-soft)] border border-[var(--border-soft)] hover:bg-[var(--bg-card-strong)]'}`}
               >
                 {t.label}
               </button>
@@ -94,7 +100,7 @@ export function GatewayPanel() {
           <input
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
-            className="w-full bg-ink-800 border border-white/10 rounded px-2 py-1.5 text-sm text-cream-50 outline-none focus:border-gold-300/30"
+            className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold)]"
             placeholder="显示名称"
           />
           <div className="flex gap-2">
@@ -118,6 +124,48 @@ export function GatewayPanel() {
   );
 }
 
+async function testConnection(p: ProviderConfig): Promise<TestStatus> {
+  if (p.id === 'mock') {
+    await new Promise((res) => setTimeout(res, 350));
+    return { kind: 'ok', latency: 0, modelEcho: 'mock-debate-v1' };
+  }
+  if (!p.baseUrl) {
+    return { kind: 'fail', reason: 'Base URL 为空' };
+  }
+  if (!p.apiKey) {
+    return { kind: 'fail', reason: 'API Key 为空' };
+  }
+  const url = p.baseUrl.replace(/\/+$/, '') + '/models';
+  const start = performance.now();
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 8000);
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${p.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      signal: ctrl.signal,
+    });
+    clearTimeout(t);
+    const latency = Math.round(performance.now() - start);
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      return {
+        kind: 'fail',
+        reason: `HTTP ${res.status}${body ? ` · ${body.slice(0, 80)}` : ''}`,
+      };
+    }
+    return { kind: 'ok', latency };
+  } catch (e: any) {
+    return {
+      kind: 'fail',
+      reason: e?.name === 'AbortError' ? '连接超时（8s）' : (e?.message || '网络错误'),
+    };
+  }
+}
+
 function ProviderCard({
   p,
   active,
@@ -132,40 +180,47 @@ function ProviderCard({
   onRemove: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [testStatus, setTestStatus] = useState<TestStatus>({ kind: 'idle' });
   const isMock = p.id === 'mock';
 
+  const handleTest = async () => {
+    setTestStatus({ kind: 'running' });
+    const result = await testConnection(p);
+    setTestStatus(result);
+  };
+
   return (
-    <li className={`glass rounded-xl p-3 ${active ? 'border-gold-300/35' : ''}`}>
+    <li className={`glass rounded-xl p-3 ${active ? 'border-[var(--border-strong)]' : ''}`}>
       <div className="flex items-center gap-2">
         <button
           onClick={onActivate}
           className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors
-            ${active ? 'border-gold-300 bg-gold-300/20' : 'border-white/20 hover:border-white/40'}`}
+            ${active ? 'border-[var(--accent-gold)] bg-[var(--accent-gold)]/20' : 'border-[var(--border-soft)] hover:border-[var(--text-muted)]'}`}
         >
-          {active && <div className="w-1.5 h-1.5 rounded-full bg-gold-300" />}
+          {active && <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent-gold)]" />}
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-display text-sm text-cream-50 truncate">
+            <span className="font-display text-sm text-[var(--text-primary)] truncate">
               {p.label}
             </span>
             {isMock && <Chip tone="gold" size="sm">Mock</Chip>}
             {p.enabled && !isMock && <Chip tone="cyan" size="sm">Active</Chip>}
           </div>
-          <div className="text-[10px] text-cream-50/40 tracking-widish uppercase mt-0.5 truncate font-mono">
+          <div className="text-[10px] text-[var(--text-muted)] tracking-widish uppercase mt-0.5 truncate font-mono">
             {p.baseUrl || '— local mock —'} · {p.model}
           </div>
         </div>
         <button
           onClick={() => setExpanded(!expanded)}
-          className="text-[10px] tracking-widish uppercase text-cream-50/45 hover:text-cream-50/80 transition-colors"
+          className="text-[10px] tracking-widish uppercase text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
         >
           {expanded ? '收起' : '配置'}
         </button>
         {!isMock && (
           <button
             onClick={onRemove}
-            className="p-1 rounded hover:bg-rose-400/15 text-rose-300/70 hover:text-rose-300"
+            className="p-1 rounded hover:bg-[var(--accent-rose)]/15 text-[var(--accent-rose)]/70 hover:text-[var(--accent-rose)]"
           >
             <Trash2 size={12} />
           </button>
@@ -173,13 +228,13 @@ function ProviderCard({
       </div>
 
       {expanded && (
-        <div className="mt-3 space-y-2 pt-3 border-t border-white/8">
+        <div className="mt-3 space-y-2 pt-3 border-t border-[var(--border-soft)]">
           <Field label="显示名称">
             <input
               value={p.label}
               onChange={(e) => onUpdate({ label: e.target.value })}
               disabled={isMock}
-              className="w-full bg-ink-800 border border-white/10 rounded px-2 py-1.5 text-xs text-cream-50 outline-none focus:border-gold-300/30 disabled:opacity-50"
+              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold)] disabled:opacity-50"
             />
           </Field>
           <Field label="Base URL">
@@ -188,7 +243,7 @@ function ProviderCard({
               onChange={(e) => onUpdate({ baseUrl: e.target.value })}
               disabled={isMock}
               placeholder="https://api.openai.com/v1"
-              className="w-full bg-ink-800 border border-white/10 rounded px-2 py-1.5 text-xs text-cream-50 font-mono outline-none focus:border-gold-300/30 disabled:opacity-50"
+              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)] disabled:opacity-50"
             />
           </Field>
           <Field label="API Key">
@@ -198,7 +253,7 @@ function ProviderCard({
               onChange={(e) => onUpdate({ apiKey: e.target.value })}
               disabled={isMock}
               placeholder="sk-..."
-              className="w-full bg-ink-800 border border-white/10 rounded px-2 py-1.5 text-xs text-cream-50 font-mono outline-none focus:border-gold-300/30 disabled:opacity-50"
+              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)] disabled:opacity-50"
             />
           </Field>
           <Field label="Model">
@@ -206,7 +261,7 @@ function ProviderCard({
               value={p.model}
               onChange={(e) => onUpdate({ model: e.target.value })}
               disabled={isMock}
-              className="w-full bg-ink-800 border border-white/10 rounded px-2 py-1.5 text-xs text-cream-50 font-mono outline-none focus:border-gold-300/30 disabled:opacity-50"
+              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)] disabled:opacity-50"
             />
           </Field>
           <div className="grid grid-cols-2 gap-2">
@@ -219,7 +274,7 @@ function ProviderCard({
                 value={p.temperature}
                 onChange={(e) => onUpdate({ temperature: parseFloat(e.target.value) })}
                 disabled={isMock}
-                className="w-full bg-ink-800 border border-white/10 rounded px-2 py-1.5 text-xs text-cream-50 font-mono outline-none focus:border-gold-300/30 disabled:opacity-50"
+                className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)] disabled:opacity-50"
               />
             </Field>
             <Field label="Max Tokens">
@@ -228,27 +283,53 @@ function ProviderCard({
                 value={p.maxTokens}
                 onChange={(e) => onUpdate({ maxTokens: parseInt(e.target.value) })}
                 disabled={isMock}
-                className="w-full bg-ink-800 border border-white/10 rounded px-2 py-1.5 text-xs text-cream-50 font-mono outline-none focus:border-gold-300/30 disabled:opacity-50"
+                className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)] disabled:opacity-50"
               />
             </Field>
           </div>
-          <label className="flex items-center gap-2 text-[11px] text-cream-50/65 cursor-pointer">
+          <label className="flex items-center gap-2 text-[11px] text-[var(--text-soft)] cursor-pointer">
             <input
               type="checkbox"
               checked={p.enableSearch}
               onChange={(e) => onUpdate({ enableSearch: e.target.checked })}
               disabled={isMock}
-              className="accent-gold-300"
+              className="accent-[var(--accent-gold)]"
             />
             允许该模型启用网络搜索（消耗 Token）
           </label>
-          <div className="flex items-center gap-2 pt-1">
-            <Button size="sm" variant="subtle" icon={<Zap size={12} />}>
+          <div className="flex items-center gap-2 pt-1 flex-wrap">
+            <Button
+              size="sm"
+              variant="subtle"
+              icon={
+                testStatus.kind === 'running' ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <Zap size={12} />
+                )
+              }
+              onClick={handleTest}
+              disabled={testStatus.kind === 'running'}
+            >
               测试连接
             </Button>
-            <span className="text-[10px] text-cream-50/30 tracking-widish">
-              {isMock ? '当前为本地模拟，无需联网' : '将在后台发起一次 ping 请求'}
-            </span>
+            {testStatus.kind === 'ok' && (
+              <span className="inline-flex items-center gap-1 text-[11px] text-[var(--accent-cyan)]">
+                <Check size={11} />
+                连接成功 · {testStatus.latency}ms{testStatus.modelEcho ? ` · ${testStatus.modelEcho}` : ''}
+              </span>
+            )}
+            {testStatus.kind === 'fail' && (
+              <span className="inline-flex items-center gap-1 text-[11px] text-[var(--accent-rose)]">
+                <XIcon size={11} />
+                {testStatus.reason}
+              </span>
+            )}
+            {testStatus.kind === 'idle' && (
+              <span className="text-[10px] text-[var(--text-muted)]">
+                {isMock ? '当前为本地模拟，无需联网' : '发起一次 GET /models 请求验证凭据'}
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -259,7 +340,7 @@ function ProviderCard({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <div className="text-[10px] tracking-widest2 uppercase text-cream-50/45 mb-1">
+      <div className="text-[10px] tracking-widest2 uppercase text-[var(--text-muted)] mb-1">
         {label}
       </div>
       {children}

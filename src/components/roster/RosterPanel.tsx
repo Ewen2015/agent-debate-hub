@@ -27,10 +27,10 @@ export function RosterPanel() {
     <div className="flex flex-col gap-5">
       <section>
         <div className="flex items-center justify-between mb-2.5">
-          <span className="text-[10px] tracking-widest2 uppercase text-cream-50/45">
+          <span className="text-[10px] tracking-widest2 uppercase text-[var(--text-primary)]/45">
             Group Size
           </span>
-          <span className="font-mono text-xs text-cream-50/60">{size} / 8</span>
+          <span className="font-mono text-xs text-[var(--text-primary)]/60">{size} / 8</span>
         </div>
         <div className="flex items-center gap-1.5">
           {Array.from({ length: 7 }).map((_, i) => {
@@ -42,8 +42,8 @@ export function RosterPanel() {
                 onClick={() => setGroupSize(n)}
                 className={`flex-1 h-9 rounded-md text-xs font-mono transition-all
                   ${active
-                    ? 'bg-gradient-to-b from-gold-300 to-gold-400 text-ink-900 shadow-glow'
-                    : 'bg-white/[0.03] text-cream-50/40 border border-white/8 hover:bg-white/[0.07]'}`}
+                    ? 'bg-gradient-to-b from-gold-300 to-gold-400 text-[var(--text-primary)] shadow-glow'
+                    : 'bg-[var(--bg-card)] text-[var(--text-primary)]/40 border border-[var(--border-soft)] hover:bg-[var(--bg-card-strong)]'}`}
               >
                 {n}
               </button>
@@ -56,12 +56,12 @@ export function RosterPanel() {
 
       <section>
         <div className="flex items-center justify-between mb-2.5">
-          <span className="text-[10px] tracking-widest2 uppercase text-cream-50/45">
+          <span className="text-[10px] tracking-widest2 uppercase text-[var(--text-primary)]/45">
             Active Roster
           </span>
           <button
             onClick={() => setShowPersonaLib(!showPersonaLib)}
-            className="text-[10px] tracking-widish uppercase text-gold-200 hover:text-gold-300 transition-colors"
+            className="text-[10px] tracking-widish uppercase text-[var(--accent-gold)] hover:text-[var(--accent-gold)] transition-colors"
           >
             {showPersonaLib ? '收起' : '+ 人设库'}
           </button>
@@ -82,14 +82,14 @@ export function RosterPanel() {
                       <select
                         value={agent.personaId}
                         onChange={(e) => setPersona(agent.id, e.target.value)}
-                        className="bg-ink-800 border border-white/15 rounded px-2 py-0.5 text-sm text-cream-50 outline-none"
+                        className="bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-0.5 text-sm text-[var(--text-primary)] outline-none"
                       >
                         {PERSONAS.map((p) => (
                           <option key={p.id} value={p.id}>{p.name}</option>
                         ))}
                       </select>
                     ) : (
-                      <span className="font-display text-sm text-cream-50 truncate">
+                      <span className="font-display text-sm text-[var(--text-primary)] truncate">
                         {persona.name}
                       </span>
                     )}
@@ -97,7 +97,7 @@ export function RosterPanel() {
                       {persona.stance === 'pro' ? '支持' : persona.stance === 'con' ? '反对' : '中立'}
                     </Chip>
                   </div>
-                  <div className="text-[11px] text-cream-50/45 tracking-widish uppercase mt-0.5 truncate">
+                  <div className="text-[11px] text-[var(--text-primary)]/45 tracking-widish uppercase mt-0.5 truncate">
                     {persona.oneLiner}
                   </div>
                   <div className="flex flex-wrap gap-1 mt-1.5">
@@ -120,14 +120,14 @@ export function RosterPanel() {
                 <div className="flex flex-col gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => setEditing(isEditing ? null : agent.id)}
-                    className="p-1 rounded hover:bg-white/8 text-cream-50/60"
+                    className="p-1 rounded hover:bg-[var(--bg-card-strong)] text-[var(--text-primary)]/60"
                   >
                     {isEditing ? <Check size={12} /> : <Edit3 size={12} />}
                   </button>
                   <button
                     onClick={() => removeAgent(agent.id)}
                     disabled={agents.length <= 2}
-                    className="p-1 rounded hover:bg-rose-400/15 text-rose-300/70 hover:text-rose-300 disabled:opacity-30"
+                    className="p-1 rounded hover:bg-[var(--accent-rose)]/15 text-[var(--accent-rose)]/70 hover:text-[var(--accent-rose)] disabled:opacity-30"
                   >
                     <Trash2 size={12} />
                   </button>
@@ -140,7 +140,7 @@ export function RosterPanel() {
 
       {showPersonaLib && (
         <section>
-          <div className="text-[10px] tracking-widest2 uppercase text-cream-50/45 mb-2.5">
+          <div className="text-[10px] tracking-widest2 uppercase text-[var(--text-primary)]/45 mb-2.5">
             Persona Library
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -160,27 +160,27 @@ export function RosterPanel() {
                   }}
                   className={`relative text-left rounded-lg p-2.5 border transition-colors
                     ${used
-                      ? 'border-gold-300/40 bg-gold-300/8'
-                      : 'border-white/8 bg-white/[0.02] hover:bg-white/[0.05]'}`}
+                      ? 'border-[var(--accent-gold)]/40 bg-[var(--accent-gold)]/8'
+                      : 'border-[var(--border-soft)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-strong)]'}`}
                 >
                   <div className="flex items-center gap-2">
                     <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-cream-50 text-xs font-display"
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-primary)] text-xs font-display"
                       style={{ background: `linear-gradient(135deg, ${p.gradient[0]}, ${p.gradient[1]})` }}
                     >
                       {p.emoji}
                     </div>
                     <div className="min-w-0">
-                      <div className="font-display text-xs text-cream-50 truncate">
+                      <div className="font-display text-xs text-[var(--text-primary)] truncate">
                         {p.name}
                       </div>
-                      <div className="text-[10px] text-cream-50/40 truncate">
+                      <div className="text-[10px] text-[var(--text-primary)]/40 truncate">
                         {p.oneLiner}
                       </div>
                     </div>
                   </div>
                   {used && (
-                    <div className="absolute top-1.5 right-1.5 text-gold-300">
+                    <div className="absolute top-1.5 right-1.5 text-[var(--accent-gold)]">
                       <Check size={10} />
                     </div>
                   )}
@@ -230,38 +230,38 @@ function CustomizeForm({
         value={oneLiner}
         onChange={(e) => setOneLiner(e.target.value)}
         rows={1}
-        className="w-full bg-ink-800 border border-white/10 rounded px-2 py-1 text-xs text-cream-50 outline-none focus:border-gold-300/30"
+        className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold)]/30"
         placeholder="一句话立场"
       />
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         rows={2}
-        className="w-full bg-ink-800 border border-white/10 rounded px-2 py-1 text-xs text-cream-50/85 outline-none focus:border-gold-300/30"
+        className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1 text-xs text-[var(--text-primary)]/85 outline-none focus:border-[var(--accent-gold)]/30"
         placeholder="人设详细描述"
       />
       <input
         value={tone}
         onChange={(e) => setTone(e.target.value)}
-        className="w-full bg-ink-800 border border-white/10 rounded px-2 py-1 text-xs text-cream-50 outline-none focus:border-gold-300/30"
+        className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold)]/30"
         placeholder="语气（用 · 分隔多个标签）"
       />
       <input
         value={focus}
         onChange={(e) => setFocus(e.target.value)}
-        className="w-full bg-ink-800 border border-white/10 rounded px-2 py-1 text-xs text-cream-50 outline-none focus:border-gold-300/30"
+        className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold)]/30"
         placeholder="关注点（用 、 分隔）"
       />
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-cream-50/45 tracking-widish uppercase">立场</span>
+        <span className="text-[10px] text-[var(--text-primary)]/45 tracking-widish uppercase">立场</span>
         {(['pro', 'con', 'neutral'] as const).map((s) => (
           <button
             key={s}
             onClick={() => setStance(s)}
             className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-widish transition-colors
               ${stance === s
-                ? s === 'pro' ? 'bg-gold-300 text-ink-900' : s === 'con' ? 'bg-rose-400 text-ink-900' : 'bg-cyan-400 text-ink-900'
-                : 'bg-white/[0.04] text-cream-50/55 hover:bg-white/[0.08]'}`}
+                ? s === 'pro' ? 'bg-[var(--accent-gold)] text-[var(--text-primary)]' : s === 'con' ? 'bg-[var(--accent-rose)] text-[var(--text-primary)]' : 'bg-[var(--accent-cyan)] text-[var(--text-primary)]'
+                : 'bg-[var(--bg-card)] text-[var(--text-primary)]/55 hover:bg-[var(--bg-card-strong)]'}`}
           >
             {s === 'pro' ? '支持' : s === 'con' ? '反对' : '中立'}
           </button>

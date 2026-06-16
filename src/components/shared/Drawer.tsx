@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
 
@@ -22,7 +22,7 @@ export function Drawer({
   width = 'w-[420px]',
 }: DrawerProps) {
   return (
-    <AnimatePresence>
+    <div>
       {open && (
         <>
           <motion.div
@@ -38,23 +38,23 @@ export function Drawer({
             animate={{ x: 0 }}
             exit={{ x: side === 'right' ? '100%' : '-100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 240 }}
-            className={`fixed top-0 ${side === 'right' ? 'right-0' : 'left-0'} h-full ${width} z-50 glass-strong border-l border-white/8 flex flex-col`}
+            className={`fixed top-0 ${side === 'right' ? 'right-0' : 'left-0'} h-full ${width} z-50 glass-strong border-l border-[var(--border-soft)] flex flex-col`}
             style={{
-              boxShadow: '0 24px 80px -20px rgba(0,0,0,0.7)',
+              boxShadow: '0 24px 80px -20px rgba(0,0,0,0.3)',
             }}
           >
-            <header className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-white/8">
+            <header className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-[var(--border-soft)]">
               <div>
-                <div className="font-display text-2xl text-cream-50">{title}</div>
+                <div className="font-display text-2xl text-[var(--text-primary)]">{title}</div>
                 {subtitle && (
-                  <div className="text-xs tracking-widish uppercase text-cream-50/50 mt-1">
+                  <div className="text-xs tracking-widish uppercase text-[var(--text-muted)] mt-1">
                     {subtitle}
                   </div>
                 )}
               </div>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-md hover:bg-white/8 text-cream-50/60 hover:text-cream-50 transition-colors"
+                className="p-1.5 rounded-md hover:bg-[var(--bg-card)] text-[var(--text-soft)] hover:text-[var(--text-primary)] transition-colors"
               >
                 <X size={18} />
               </button>
@@ -65,6 +65,6 @@ export function Drawer({
           </motion.aside>
         </>
       )}
-    </AnimatePresence>
+    </div>
   );
 }

@@ -2,8 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root,
+[data-theme='light'] {
+  --bg-base: #F5F1E8;
+  --bg-elev: #FFFFFF;
+  --bg-soft: #FBF7EC;
+  --bg-card: rgba(20, 24, 36, 0.04);
+  --bg-card-strong: rgba(20, 24, 36, 0.06);
+  --border-soft: rgba(20, 24, 36, 0.08);
+  --border-strong: rgba(168, 118, 26, 0.4);
+  --text-primary: #1A1F2E;
+  --text-secondary: rgba(26, 31, 46, 0.65);
+  --text-muted: rgba(26, 31, 46, 0.4);
+  --text-soft: rgba(26, 31, 46, 0.8);
+  --accent-gold: #B8801E;
+  --accent-cyan: #2BA88E;
+  --accent-rose: #C84A4D;
+  --accent-violet: #7565D6;
+  --shadow-card: 0 8px 28px -16px rgba(20, 24, 36, 0.18), 0 1px 0 0 rgba(20, 24, 36, 0.04) inset;
+}
+
+[data-theme='dark'] {
   --bg-base: #0B0F1A;
+  --bg-elev: #111726;
+  --bg-soft: #0E1424;
   --bg-card: rgba(255, 255, 255, 0.04);
   --bg-card-strong: rgba(255, 255, 255, 0.07);
   --border-soft: rgba(255, 255, 255, 0.08);
@@ -11,10 +33,12 @@
   --text-primary: #F1ECDF;
   --text-secondary: rgba(241, 236, 223, 0.65);
   --text-muted: rgba(241, 236, 223, 0.4);
+  --text-soft: rgba(241, 236, 223, 0.8);
   --accent-gold: #E8B14C;
   --accent-cyan: #5FE0C7;
   --accent-rose: #F47174;
   --accent-violet: #9A8CFF;
+  --shadow-card: 0 8px 32px -16px rgba(0, 0, 0, 0.6), 0 1px 0 0 rgba(255, 255, 255, 0.04) inset;
 }
 
 * {
@@ -31,14 +55,15 @@ html, body, #root {
   color: var(--text-primary);
   font-family: 'Inter Tight', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
   font-feature-settings: 'cv11', 'ss01', 'ss03';
+  transition: background-color 0.4s ease, color 0.4s ease;
 }
 
 body {
   background:
-    radial-gradient(ellipse 80% 60% at 20% 0%, rgba(232, 177, 76, 0.08), transparent 60%),
-    radial-gradient(ellipse 70% 50% at 80% 100%, rgba(154, 140, 255, 0.06), transparent 60%),
-    radial-gradient(ellipse 60% 40% at 50% 50%, rgba(95, 224, 199, 0.04), transparent 70%),
-    linear-gradient(180deg, #0B0F1A 0%, #08101C 100%);
+    radial-gradient(ellipse 80% 60% at 20% 0%, rgba(184, 128, 30, 0.10), transparent 60%),
+    radial-gradient(ellipse 70% 50% at 80% 100%, rgba(117, 101, 214, 0.08), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 50% 50%, rgba(43, 168, 142, 0.06), transparent 70%),
+    linear-gradient(180deg, var(--bg-base) 0%, var(--bg-soft) 100%);
   background-attachment: fixed;
 }
 
@@ -59,8 +84,8 @@ body::before {
 }
 
 ::selection {
-  background: rgba(232, 177, 76, 0.4);
-  color: #FAF7F0;
+  background: rgba(184, 128, 30, 0.3);
+  color: #1A1F2E;
 }
 
 ::-webkit-scrollbar {
@@ -71,11 +96,11 @@ body::before {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-soft);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(232, 177, 76, 0.3);
+  background: var(--border-strong);
 }
 
 .font-display {
@@ -88,21 +113,23 @@ body::before {
 }
 
 .glass {
-  background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02));
+  background: var(--bg-card);
   border: 1px solid var(--border-soft);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-card);
 }
 
 .glass-strong {
-  background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
-  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--bg-card-strong);
+  border: 1px solid var(--border-soft);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+  box-shadow: var(--shadow-card);
 }
 
 .divider-x {
-  background-image: linear-gradient(90deg, transparent, rgba(232,177,76,0.35), transparent);
+  background-image: linear-gradient(90deg, transparent, var(--border-strong), transparent);
   height: 1px;
 }
 
@@ -154,7 +181,7 @@ input, textarea {
 }
 
 .shimmer-text {
-  background: linear-gradient(90deg, #F1ECDF 0%, #E8B14C 35%, #5FE0C7 65%, #F1ECDF 100%);
+  background: linear-gradient(90deg, var(--text-primary) 0%, var(--accent-gold) 35%, var(--accent-cyan) 65%, var(--text-primary) 100%);
   background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;

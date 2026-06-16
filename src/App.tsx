@@ -136,19 +136,19 @@ function TopBar() {
           className="flex items-center gap-2.5"
         >
           <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-gold-300 to-gold-500 flex items-center justify-center">
-            <Activity size={18} className="text-ink-900" />
+            <Activity size={18} className="text-[var(--text-primary)]" />
           </div>
           <div>
-            <div className="font-display text-lg text-cream-50 leading-none tracking-tightish">
+            <div className="font-display text-lg text-[var(--text-primary)] leading-none tracking-tightish">
               Group Debate Hub
             </div>
-            <div className="text-[10px] tracking-widest2 uppercase text-cream-50/40 mt-1">
+            <div className="text-[10px] tracking-widest2 uppercase text-[var(--text-primary)]/40 mt-1">
               议事厅 · v0.1
             </div>
           </div>
         </motion.div>
         <div className="flex-1" />
-        <div className="hidden md:flex items-center gap-1.5 text-[10px] tracking-widest2 uppercase text-cream-50/30">
+        <div className="hidden md:flex items-center gap-1.5 text-[10px] tracking-widest2 uppercase text-[var(--text-primary)]/30">
           <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse-soft" />
           arena ready
         </div>
@@ -163,7 +163,7 @@ function TopBar() {
 function Footer() {
   return (
     <footer className="px-5 md:px-8 py-4 mt-2">
-      <div className="max-w-[1500px] mx-auto flex items-center justify-between text-[10px] tracking-widish uppercase text-cream-50/30">
+      <div className="max-w-[1500px] mx-auto flex items-center justify-between text-[10px] tracking-widish uppercase text-[var(--text-primary)]/30">
         <span>Group Debate Agent Hub · 本地运行 · 状态保存在浏览器</span>
         <span>Mock 模式 · {new Date().getFullYear()}</span>
       </div>
@@ -187,19 +187,19 @@ function SidePanel({
   highlight?: boolean;
 }) {
   return (
-    <div className={`glass rounded-2xl p-4 ${highlight ? 'border-gold-300/35' : ''}`}>
+    <div className={`glass rounded-2xl p-4 ${highlight ? 'border-[var(--accent-gold)]/35' : ''}`}>
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-gold-300/80">{icon}</span>
-        <span className="font-display text-sm text-cream-50">{title}</span>
+        <span className="text-[var(--accent-gold)]/80">{icon}</span>
+        <span className="font-display text-sm text-[var(--text-primary)]">{title}</span>
         <div className="flex-1" />
         <button
           onClick={onOpen}
-          className="text-[10px] tracking-widish uppercase text-cream-50/45 hover:text-cream-50/80 transition-colors"
+          className="text-[10px] tracking-widish uppercase text-[var(--text-primary)]/45 hover:text-[var(--text-primary)]/80 transition-colors"
         >
           展开 →
         </button>
       </div>
-      <div className="text-[10px] tracking-widish uppercase text-cream-50/35 mb-2">{subtitle}</div>
+      <div className="text-[10px] tracking-widish uppercase text-[var(--text-primary)]/35 mb-2">{subtitle}</div>
       <div>{children}</div>
     </div>
   );
@@ -214,13 +214,13 @@ function RosterMini() {
         return (
           <li key={a.id} className="flex items-center gap-2 text-[12px]">
             <div
-              className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-display text-cream-50"
+              className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-display text-[var(--text-primary)]"
               style={{ background: `linear-gradient(135deg, ${persona.gradient[0]}, ${persona.gradient[1]})` }}
             >
               {persona.emoji}
             </div>
-            <span className="text-cream-50/80 truncate">{persona.name}</span>
-            <span className="text-cream-50/30 text-[10px] ml-auto uppercase tracking-widish">
+            <span className="text-[var(--text-primary)]/80 truncate">{persona.name}</span>
+            <span className="text-[var(--text-primary)]/30 text-[10px] ml-auto uppercase tracking-widish">
               {persona.stance === 'pro' ? '支持' : persona.stance === 'con' ? '反对' : '中立'}
             </span>
           </li>
@@ -235,9 +235,9 @@ function GatewayMini() {
   const active: string = useGatewayStore((s) => s.activeProviderId);
   const cur = providers.find((p) => p.id === active) || providers[0];
   return (
-    <div className="text-[12px] text-cream-50/75">
+    <div className="text-[12px] text-[var(--text-primary)]/75">
       <div className="font-display">{cur?.label}</div>
-      <div className="text-[10px] text-cream-50/40 font-mono mt-0.5 truncate">
+      <div className="text-[10px] text-[var(--text-primary)]/40 font-mono mt-0.5 truncate">
         {cur?.baseUrl || '— local mock —'}
       </div>
     </div>
@@ -247,13 +247,13 @@ function GatewayMini() {
 function ReportMini() {
   const report = useSessionStore((s) => s.report);
   if (!report) {
-    return <div className="text-[11px] text-cream-50/40">完成阶段后点击指挥台生成。</div>;
+    return <div className="text-[11px] text-[var(--text-primary)]/40">完成阶段后点击指挥台生成。</div>;
   }
   return (
-    <div className="space-y-1 text-[11.5px] text-cream-50/70">
-      <div><span className="text-cream-50/40">共识：</span>{report.consensus.length} 条</div>
-      <div><span className="text-cream-50/40">分歧：</span>{report.disagreements.length} 处</div>
-      <div><span className="text-cream-50/40">论点：</span>{report.arguments.length} 个</div>
+    <div className="space-y-1 text-[11.5px] text-[var(--text-primary)]/70">
+      <div><span className="text-[var(--text-primary)]/40">共识：</span>{report.consensus.length} 条</div>
+      <div><span className="text-[var(--text-primary)]/40">分歧：</span>{report.disagreements.length} 处</div>
+      <div><span className="text-[var(--text-primary)]/40">论点：</span>{report.arguments.length} 个</div>
     </div>
   );
 }

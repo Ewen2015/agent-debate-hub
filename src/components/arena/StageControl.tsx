@@ -1,8 +1,9 @@
-import { Lightbulb, Swords, Pause, Play, RotateCcw, FileText, Settings2, Users, Loader2 } from 'lucide-react';
+import { Lightbulb, Swords, Pause, Play, RotateCcw, FileText, Settings2, Users, Loader2, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { Chip } from '@/components/shared/Chip';
 import { useSessionStore } from '@/store/sessionStore';
 import { useUIStore } from '@/store/staticStores';
+import { useThemeStore } from '@/store/themeStore';
 import { DebateEngine } from '@/engine/DebateEngine';
 import { ReportBuilder } from '@/engine/ReportBuilder';
 import { useState } from 'react';
@@ -13,10 +14,12 @@ export function StageControl() {
   const setRoster = useUIStore((s) => s.setRosterDrawer);
   const setGateway = useUIStore((s) => s.setGatewayDrawer);
   const setReportDrawer = useUIStore((s) => s.setReportDrawer);
+  const theme = useThemeStore((s) => s.theme);
+  const toggleTheme = useThemeStore((s) => s.toggle);
   const [busy, setBusy] = useState<string | null>(null);
 
   const canStart = session.question.trim().length > 4 && session.phase === 'idle';
-  const canEnterDebate = session.phase === 'idle' && session.speeches.some((s) => s.round === 0);
+  const brainstormDone = session.phase === 'idle' && session.speeches.some((s) => s.round === 0);
   const isRunning = session.phase === 'brainstorm' || session.phase === 'debate';
 
   const handleStart = async () => {
@@ -59,43 +62,71 @@ export function StageControl() {
     useSessionStore.getState().reset();
   };
 
+  const phaseLabel = (() => {
+    if (session.phase === 'idle') {
+      return brainstormDone ? 'Brainstorm 已就绪 · 可进入 Debate' : '待开始';
+    }
+    if (session.phase === 'brainstorm') {
+      return session.paused ? '已暂停 · Brainstorm' : 'Brainstorm 进行中';
+    }
+    if (session.phase === 'debate') {
+      return session.paused
+        ? '已暂停 · Debate'
+        : `Debate 进行中 · R${session.currentRound}/${session.maxRounds}`;
+    }
+    return '报告已生成';
+  })();
+
   return (
     <div className="glass rounded-2xl px-5 py-3.5 flex flex-wrap items-center gap-3">
       <div className="flex items-center gap-2 mr-2">
-        <div className="w-1 h-7 bg-gold-300 rounded-full" />
+        <div className="w-1 h-7 bg-[var(--accent-gold)] rounded-full" />
         <div>
-          <div className="font-display text-base text-cream-50 leading-none">指挥台</div>
-          <div className="text-[10px] tracking-widish uppercase text-cream-50/45 mt-1">
-            {session.phase === 'idle' && '待开始'}
-            {session.phase === 'brainstorm' && (session.paused ? '已暂停 · Brainstorm' : 'Brainstorm 进行中')}
-            {session.phase === 'debate' && (session.paused ? '已暂停 · Debate' : `Debate 进行中 · R${session.currentRound}/${session.maxRounds}`)}
-            {session.phase === 'report' && '报告已生成'}
+          <div className="font-display text-base text-[var(--text-primary)] leading-none">指挥台</div>
+          <div className="text-[10px] tracking-widish uppercase text-[var(--text-muted)] mt-1">
+            {phaseLabel}
           </div>
         </div>
       </div>
 
-      <div className="h-7 w-px bg-white/8" />
+      <div className="h-7 w-px bg-[var(--border-soft)]" />
 
-      {session.phase === 'idle' && (
+      {session.phase === 'idle' && !brainstormDone && (
+        <Button
+          variant="primary"
+          size="md"
+          icon={busy === 'brainstorm' ? <Loader2 size={14} className="animate-spin" /> : <Lightbulb size={14} />}
+          onClick={handleStart}
+          disabled={!canStart || !!busy}
+        >
+          开始 Brainstorm
+        </Button>
+      )}
+
+      {session.phase === 'idle' && brainstormDone && (
         <>
-          <Button
-            variant="primary"
-            size="md"
-            icon={busy === 'brainstorm' ? <Loader2 size={14} className="animate-spin" /> : <Lightbulb size={14} />}
-            onClick={handleStart}
-            disabled={!canStart || !!busy}
-          >
-            开始 Brainstorm
-          </Button>
           <Button
             variant="secondary"
             size="md"
+            icon={<RotateCcw size={14} />}
+            onClick={handleStart}
+            disabled={!!busy}
+            title="清空当前结果，重新做一轮 Brainstorm"
+          >
+            重新 Brainstorm
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
             icon={busy === 'debate' ? <Loader2 size={14} className="animate-spin" /> : <Swords size={14} />}
             onClick={handleEnterDebate}
-            disabled={!canEnterDebate || !!busy}
+            disabled={!!busy}
           >
-            直接进入 Debate
+            进入 Debate →
           </Button>
+          <Chip tone="gold">
+            {session.speeches.filter((s) => s.round === 0).length} 个 brainstorm 观点已就绪
+          </Chip>
         </>
       )}
 
@@ -143,12 +174,30 @@ export function StageControl() {
         </Button>
       )}
 
+      {session.phase === 'idle' && !brainstormDone && session.speeches.length > 0 && (
+        <Button
+          variant="secondary"
+          size="md"
+          icon={<RotateCcw size={14} />}
+          onClick={handleReset}
+        >
+          清空
+        </Button>
+      )}
+
       <div className="flex-1" />
 
       <div className="flex items-center gap-2">
         <Chip tone="mute">
           R{Math.max(session.maxRounds, session.currentRound)}/{session.maxRounds}
         </Chip>
+        <button
+          onClick={toggleTheme}
+          title={theme === 'light' ? '切换到深色' : '切换到浅色'}
+          className="w-8 h-8 rounded-md border border-[var(--border-soft)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-strong)] text-[var(--text-soft)] hover:text-[var(--text-primary)] flex items-center justify-center transition-colors"
+        >
+          {theme === 'light' ? <Moon size={14} /> : <Sun size={14} />}
+        </button>
         <div className="hidden md:flex items-center gap-2">
           <Button
             variant="ghost"

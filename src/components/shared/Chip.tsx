@@ -3,12 +3,12 @@ import type { ReactNode } from 'react';
 type Tone = 'gold' | 'cyan' | 'rose' | 'violet' | 'neutral' | 'mute';
 
 const toneClass: Record<Tone, string> = {
-  gold: 'bg-gold-300/12 text-gold-200 border-gold-300/35',
-  cyan: 'bg-cyan-400/12 text-cyan-300 border-cyan-400/35',
-  rose: 'bg-rose-400/12 text-rose-300 border-rose-400/35',
-  violet: 'bg-violet-400/12 text-violet-300 border-violet-400/35',
-  neutral: 'bg-white/[0.06] text-cream-50/80 border-white/15',
-  mute: 'bg-white/[0.03] text-cream-50/50 border-white/8',
+  gold: 'bg-[var(--accent-gold)]/12 text-[var(--accent-gold)] border-[var(--accent-gold)]/35',
+  cyan: 'bg-[var(--accent-cyan)]/12 text-[var(--accent-cyan)] border-[var(--accent-cyan)]/35',
+  rose: 'bg-[var(--accent-rose)]/12 text-[var(--accent-rose)] border-[var(--accent-rose)]/35',
+  violet: 'bg-[var(--accent-violet)]/12 text-[var(--accent-violet)] border-[var(--accent-violet)]/35',
+  neutral: 'bg-[var(--bg-card)] text-[var(--text-soft)] border-[var(--border-soft)]',
+  mute: 'bg-[var(--bg-card)] text-[var(--text-muted)] border-[var(--border-soft)]',
 };
 
 export function Chip({

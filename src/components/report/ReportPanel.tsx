@@ -21,10 +21,10 @@ export function ReportPanel() {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <div className="w-12 h-12 rounded-full border border-cream-50/15 flex items-center justify-center mb-3">
-          <FileText size={20} className="text-cream-50/30" />
+          <FileText size={20} className="text-[var(--text-primary)]/30" />
         </div>
-        <div className="font-display text-base text-cream-50/80">尚未生成报告</div>
-        <div className="text-[11px] text-cream-50/40 mt-1.5 tracking-widish max-w-[260px]">
+        <div className="font-display text-base text-[var(--text-primary)]/80">尚未生成报告</div>
+        <div className="text-[11px] text-[var(--text-primary)]/40 mt-1.5 tracking-widish max-w-[260px]">
           完成至少一轮 Brainstorm 或 Debate 后，点击指挥台的「生成报告」。
         </div>
       </div>
@@ -56,11 +56,11 @@ export function ReportPanel() {
   return (
     <div className="space-y-5">
       <header className="flex items-center gap-2">
-        <FileText size={16} className="text-gold-300" />
-        <span className="font-display text-lg text-cream-50">统一结论报告</span>
+        <FileText size={16} className="text-[var(--accent-gold)]" />
+        <span className="font-display text-lg text-[var(--text-primary)]">统一结论报告</span>
       </header>
 
-      <div className="flex items-center gap-2 text-[10px] tracking-widish uppercase text-cream-50/40">
+      <div className="flex items-center gap-2 text-[10px] tracking-widish uppercase text-[var(--text-primary)]/40">
         <Calendar size={10} />
         {new Date(report.generatedAt).toLocaleString()}
       </div>
@@ -68,7 +68,7 @@ export function ReportPanel() {
       <div className="divider-x" />
 
       <Section title="TL;DR" index="01">
-        <p className="text-[13.5px] leading-relaxed text-cream-50/90 font-serif italic text-balance">
+        <p className="text-[13.5px] leading-relaxed text-[var(--text-primary)]/90 font-serif italic text-balance">
           {report.tldr}
         </p>
       </Section>
@@ -78,7 +78,7 @@ export function ReportPanel() {
           {report.consensus.map((c, i) => (
             <li
               key={i}
-              className="text-[13px] leading-relaxed text-cream-50/85 pl-3 border-l-2 border-gold-300/40"
+              className="text-[13px] leading-relaxed text-[var(--text-primary)]/85 pl-3 border-l-2 border-[var(--accent-gold)]/40"
             >
               {c}
             </li>
@@ -91,7 +91,7 @@ export function ReportPanel() {
           {report.disagreements.map((d, i) => (
             <li
               key={i}
-              className="text-[13px] leading-relaxed text-cream-50/85 pl-3 border-l-2 border-rose-400/40"
+              className="text-[13px] leading-relaxed text-[var(--text-primary)]/85 pl-3 border-l-2 border-[var(--accent-rose)]/40"
             >
               {d}
             </li>
@@ -110,7 +110,7 @@ export function ReportPanel() {
                   className="w-full px-3 py-2 flex items-center gap-2 text-left"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-display text-[13px] text-cream-50 truncate">
+                    <div className="font-display text-[13px] text-[var(--text-primary)] truncate">
                       {a.point}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
@@ -125,7 +125,7 @@ export function ReportPanel() {
                       )}
                     </div>
                   </div>
-                  {open ? <ChevronUp size={14} className="text-cream-50/50" /> : <ChevronDown size={14} className="text-cream-50/50" />}
+                  {open ? <ChevronUp size={14} className="text-[var(--text-primary)]/50" /> : <ChevronDown size={14} className="text-[var(--text-primary)]/50" />}
                 </button>
                 <AnimatePresence>
                   {open && (
@@ -133,38 +133,38 @@ export function ReportPanel() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="border-t border-white/8 px-3 py-2.5 space-y-2 overflow-hidden"
+                      className="border-t border-[var(--border-soft)] px-3 py-2.5 space-y-2 overflow-hidden"
                     >
                       {a.supporters.length > 0 && (
                         <div>
-                          <div className="text-[10px] tracking-widish uppercase text-gold-200/70 mb-1">支持</div>
-                          <div className="text-[12px] text-cream-50/75">{a.supporters.join('、')}</div>
+                          <div className="text-[10px] tracking-widish uppercase text-[var(--accent-gold)]/70 mb-1">支持</div>
+                          <div className="text-[12px] text-[var(--text-primary)]/75">{a.supporters.join('、')}</div>
                         </div>
                       )}
                       {a.opposers.length > 0 && (
                         <div>
-                          <div className="text-[10px] tracking-widish uppercase text-rose-300/70 mb-1">反对</div>
-                          <div className="text-[12px] text-cream-50/75">{a.opposers.join('、')}</div>
+                          <div className="text-[10px] tracking-widish uppercase text-[var(--accent-rose)]/70 mb-1">反对</div>
+                          <div className="text-[12px] text-[var(--text-primary)]/75">{a.opposers.join('、')}</div>
                         </div>
                       )}
                       {a.evidence.length > 0 && (
                         <div>
-                          <div className="text-[10px] tracking-widish uppercase text-cyan-300/70 mb-1">证据</div>
+                          <div className="text-[10px] tracking-widish uppercase text-[var(--accent-cyan)]/70 mb-1">证据</div>
                           <ul className="space-y-1">
                             {a.evidence.map((e) => (
                               <li
                                 key={e.url}
-                                className="text-[12px] pl-2 border-l border-cyan-400/30"
+                                className="text-[12px] pl-2 border-l border-[var(--accent-cyan)]/30"
                               >
                                 <a
                                   href={e.url}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="text-cyan-300/85 hover:text-cyan-300"
+                                  className="text-[var(--accent-cyan)]/85 hover:text-[var(--accent-cyan)]"
                                 >
                                   {e.title}
                                 </a>
-                                <span className="text-cream-50/30 ml-1.5 text-[10px] tracking-widish uppercase">
+                                <span className="text-[var(--text-primary)]/30 ml-1.5 text-[10px] tracking-widish uppercase">
                                   {e.domain}
                                 </span>
                               </li>
@@ -186,7 +186,7 @@ export function ReportPanel() {
           {report.actions.map((a, i) => (
             <li
               key={i}
-              className="text-[13px] leading-relaxed text-cream-50/85 marker:text-gold-300 marker:font-mono"
+              className="text-[13px] leading-relaxed text-[var(--text-primary)]/85 marker:text-[var(--accent-gold)] marker:font-mono"
             >
               {a}
             </li>
@@ -230,14 +230,14 @@ function Section({
   return (
     <section>
       <div className="flex items-baseline gap-2 mb-2.5">
-        <span className="font-mono text-[10px] text-gold-300/70 tracking-widish">
+        <span className="font-mono text-[10px] text-[var(--accent-gold)]/70 tracking-widish">
           {index}
         </span>
-        <span className="font-display text-sm text-cream-50">{title}</span>
+        <span className="font-display text-sm text-[var(--text-primary)]">{title}</span>
         {count !== undefined && (
-          <span className="text-[10px] text-cream-50/40 ml-1">({count})</span>
+          <span className="text-[10px] text-[var(--text-primary)]/40 ml-1">({count})</span>
         )}
-        <div className="flex-1 h-px bg-white/6 ml-2" />
+        <div className="flex-1 h-px bg-[var(--bg-card)] ml-2" />
       </div>
       {children}
     </section>
