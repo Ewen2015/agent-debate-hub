@@ -98,26 +98,26 @@ export function StageControl() {
   })();
 
   return (
-    <div className="glass rounded-2xl px-2.5 py-2 flex flex-wrap items-center gap-1.5 text-[12px]">
-      <div className="flex items-start gap-1.5 mr-2 min-w-[160px]">
-        <div className="w-1.5 h-6 bg-[var(--accent-gold)] rounded-full mt-1" />
+    <div className="glass rounded-2xl px-3 py-2.5 flex flex-wrap items-center gap-2 text-[13px]">
+      <div className="flex items-start gap-2 mr-2 min-w-[160px]">
+        <div className="w-1 h-6 bg-[var(--accent-gold)] rounded-full mt-1" />
         <div>
-          <div className="font-display text-xs text-[var(--text-primary)] leading-none">指挥台</div>
-          <div className="text-[9px] uppercase tracking-widish text-[var(--text-muted)] mt-0.5">
+          <div className="font-display text-[13px] tracking-tightish text-[var(--text-primary)] leading-none">指挥台</div>
+          <div className="text-[10px] uppercase tracking-widest2 text-[var(--text-muted)] mt-1">
             {phaseLabel}
           </div>
         </div>
       </div>
 
-      <div className="h-4 w-px bg-[var(--border-soft)]" />
+      <div className="h-5 w-px bg-[var(--border-soft)]" />
 
       {!llmReady && session.phase === 'idle' && (
-        <div className="flex items-center gap-2 text-[10.5px] text-[var(--accent-rose)]/90 bg-[var(--accent-rose)]/10 rounded-lg px-2.5 py-1">
+        <div className="flex items-center gap-2 text-[11px] text-[var(--accent-rose)] bg-[var(--accent-rose)]/8 rounded-lg px-2.5 py-1.5 border border-[var(--accent-rose)]/20">
           <AlertCircle size={13} className="flex-shrink-0" />
           <span className="flex-1">未配置 LLM — 请在 Gateway 中填入 API Key</span>
           <button
             onClick={() => setGateway(true)}
-            className="text-[9px] tracking-widish uppercase text-[var(--accent-rose)] hover:text-[var(--text-primary)] transition-colors flex-shrink-0"
+            className="text-[10px] font-medium text-[var(--accent-rose)] hover:text-[var(--text-primary)] transition-colors flex-shrink-0"
           >
             去配置 →
           </button>
@@ -239,22 +239,22 @@ export function StageControl() {
         <button
           onClick={toggleTheme}
           title={theme === 'light' ? '切换到深色' : '切换到浅色'}
-          className="w-8 h-8 rounded-md border border-[var(--border-soft)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-strong)] text-[var(--text-soft)] hover:text-[var(--text-primary)] flex items-center justify-center transition-colors"
+          className="w-8 h-8 rounded-lg border border-[var(--border-soft)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-gold)]/40 text-[var(--text-soft)] hover:text-[var(--text-primary)] flex items-center justify-center transition-all"
         >
           {theme === 'light' ? <Moon size={14} /> : <Sun size={14} />}
         </button>
-        <div className="hidden md:flex items-center gap-1">
+        <div className="hidden md:flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => setRoster(true)}
-            className="rounded-lg border border-[var(--border-soft)] bg-[var(--bg-card)] px-2 py-1 text-[10px] text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] transition-colors"
+            className="rounded-lg border border-[var(--border-soft)] bg-[var(--bg-card)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-gold)]/40 transition-all"
           >
             Roster
           </button>
           <button
             type="button"
             onClick={() => setGateway(true)}
-            className="rounded-lg border border-[var(--border-soft)] bg-[var(--bg-card)] px-2 py-1 text-[10px] text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] transition-colors"
+            className="rounded-lg border border-[var(--border-soft)] bg-[var(--bg-card)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-gold)]/40 transition-all"
           >
             Gateway
           </button>

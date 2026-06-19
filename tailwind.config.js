@@ -48,6 +48,7 @@ export default {
       },
       letterSpacing: {
         tightish: '-0.01em',
+        tightish2: '-0.02em',
         widish: '0.04em',
         widest2: '0.18em',
       },
@@ -55,6 +56,12 @@ export default {
         glow: '0 0 0 1px rgba(232,177,76,0.25), 0 0 30px -8px rgba(232,177,76,0.45)',
         card: '0 8px 32px -16px rgba(0,0,0,0.6), 0 1px 0 0 rgba(255,255,255,0.04) inset',
         ring: '0 0 0 1px rgba(232,177,76,0.35)',
+        elev: '0 1px 0 0 rgba(15,23,42,0.04), 0 4px 12px -4px rgba(15,23,42,0.08)',
+        float: '0 8px 32px -6px rgba(15,23,42,0.12)',
+      },
+      borderRadius: {
+        '2xl': '1rem',
+        '3xl': '1.25rem',
       },
       animation: {
         'pulse-soft': 'pulse-soft 2.2s cubic-bezier(0.4,0,0.6,1) infinite',

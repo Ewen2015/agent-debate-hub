@@ -31,30 +31,30 @@ export function Drawer({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
           />
           <motion.aside
             initial={{ x: side === 'right' ? '100%' : '-100%' }}
             animate={{ x: 0 }}
             exit={{ x: side === 'right' ? '100%' : '-100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 240 }}
-            className={`fixed top-0 ${side === 'right' ? 'right-0' : 'left-0'} h-full ${width} z-50 glass-strong border-l border-[var(--border-soft)] flex flex-col`}
+            transition={{ type: 'spring', damping: 32, stiffness: 280 }}
+            className={`fixed top-0 ${side === 'right' ? 'right-0' : 'left-0'} h-full ${width} z-50 glass-float border-l border-[var(--border-soft)] flex flex-col`}
             style={{
-              boxShadow: '0 24px 80px -20px rgba(0,0,0,0.3)',
+              boxShadow: 'var(--shadow-float)',
             }}
           >
-            <header className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-[var(--border-soft)]">
+            <header className="flex items-start justify-between px-6 pt-6 pb-5 border-b border-[var(--border-soft)]">
               <div>
-                <div className="font-display text-2xl text-[var(--text-primary)]">{title}</div>
+                <div className="font-display text-2xl tracking-tightish text-[var(--text-primary)]">{title}</div>
                 {subtitle && (
-                  <div className="text-xs tracking-widish uppercase text-[var(--text-muted)] mt-1">
+                  <div className="text-xs text-[var(--text-muted)] mt-1.5">
                     {subtitle}
                   </div>
                 )}
               </div>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-md hover:bg-[var(--bg-card)] text-[var(--text-soft)] hover:text-[var(--text-primary)] transition-colors"
+                className="p-2 rounded-lg hover:bg-[var(--bg-card-strong)] text-[var(--text-soft)] hover:text-[var(--text-primary)] transition-colors"
               >
                 <X size={18} />
               </button>
