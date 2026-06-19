@@ -1,26 +1,151 @@
 # Group Debate Agent Hub · 议事厅
 
-> **多 Agent 实时辩论指挥台** — 把多个具备独立人设的 AI Agent 组成"智囊团"，围绕用户提出的问题先做发散式 brainstorming，再进入多轮正反辩论，期间可让 Agent 并行检索网络补充论据，并允许人类随时介入纠偏或追问，最终自动汇总出一份**结构化的统一结论报告**。
+> **Real-time multi-agent debate command center.**
+> Organize multiple AI agents with distinct personas into a brainstorming and debate flow, optionally enrich their arguments with search-like evidence, allow human intervention at any time, and produce a structured consensus report.
 
-![status](https://img.shields.io/badge/status-v0.1-5FE0C7) ![stack](https://img.shields.io/badge/stack-React%2018%20%2B%20Vite%206%20%2B%20TS-E8B14C) ![mock](https://img.shields.io/badge/runtime-mock%20mode-9A8CFF)
+> Default language: English. 中文版在下面。
 
-## ✨ 核心特性
+![status](https://img.shields.io/badge/status-v0.1-5FE0C7) ![stack](https://img.shields.io/badge/stack-React%2018%20%2B%20Vite%206%20%2B%20TS-E8B14C) ![mode](https://img.shields.io/badge/runtime-provider%20ready-9A8CFF)
 
-- 🎭 **8 套预置人设** — 理想主义者 / 怀疑论者 / 工程师 / 体验派 / 数据极客 / 风险厌恶者 / 战略家 / 道德卫士
-- 🛠 **自定义人设** — 名称、立场、语气、关注点、立场（pro / con / neutral）实时编辑
-- 👥 **群组大小 2–8** — 拖动 / 点选调节，自动按预置池补全
-- 💡 **Brainstorm 阶段** — 串行发散，事件流 + 发言流同步滚动
-- 🗡 **Debate 阶段** — 可选 2/3/4/5 轮，每轮按立场对抗推演
-- 🌐 **网络搜索补强** — 每个 Agent 发言前 55% 概率触发检索，引用 2 条拟真资料
-- 🚨 **人类介入** — 任意时刻输入指令纠偏，事件流以紫标 chip 呈现
-- ⏯ **过程控制** — 暂停 / 继续 / 强制结束 / 重新开始，可一直进行
-- ⚙ **模型接入** — 6 种 Provider 模板（OpenAI / Anthropic / DeepSeek / Moonshot / Ollama / Custom）
-- 📄 **统一结论报告** — TL;DR + 共识 / 分歧 / 论点明细 / 行动建议，支持 Markdown 导出
-- 💾 **本地持久化** — 议题、阶段、事件、报告均存入 `localStorage`，刷新不丢
+## What is this?
 
-## 🎬 本地运行
+Group Debate Agent Hub is a local frontend prototype for coordinating a panel of AI agents with independent personas and debate roles. The current implementation is built around a real LLM request flow:
 
-本项目使用 `pnpm` 作为包管理工具。首次运行请先安装依赖：
+- `src/components/gateway/GatewayPanel.tsx` lets you configure provider templates and test connections
+- `src/engine/LLMConfig.ts` resolves provider config from UI state or environment variables
+- `src/engine/LLMClient.ts` sends chat requests through `/llm-proxy` and supports OpenAI-compatible endpoints, Anthropic, and Ark Coding Plan
+- `src/engine/DebateEngine.ts` runs the actual Brainstorm and Debate stages using configured providers, with agent-specific chat history persisted to `localStorage`
+- `src/engine/SearchResolver.ts` routes search-tool calls through Tavily / Serper if API keys are provided, while Anthropic/Ark can use native search
+
+It also includes persona helper modules and sample persona templates in `src/engine/MockLLM.ts`, but the debate pipeline itself relies on the real LLM integration when a provider is configured.
+
+## Key Features
+
+- Configurable agent personas: name, stance, tone, focus, and argument style
+- 2–8 agents per session, with auto-fill from persona presets
+- Brainstorm and debate phases with live event and speech timelines
+- Multi-round debate support (2–5 rounds)
+- Provider-backed LLM execution via `src/engine/LLMClient.ts`
+- Search support through Anthropic/Ark native search or Tavily/Serper function tool
+- Human intervention commands during live sessions
+- Pause / resume / stop / restart controls
+- Provider templates for OpenAI / Anthropic / DeepSeek / Moonshot / Ollama / Custom
+- Structured report generation with consensus, disagreement, key arguments, and recommended actions
+- Local persistence via `localStorage`
+
+## Quick Start
+
+Install dependencies:
+
+```bash
+pnpm install
+```
+
+Run the development server:
+
+```bash
+pnpm dev
+```
+
+Open the app in your browser:
+
+```text
+http://localhost:5173
+```
+
+Build for production:
+
+```bash
+pnpm build
+pnpm preview
+```
+
+## Project Structure
+
+```
+src/
+├── components/
+│   ├── arena/        # Debate arena UI: AgentRing, EventStream, SpeechStream, StageControl
+│   ├── gateway/      # Model provider configuration
+│   ├── question/     # Topic editor and prompt controls
+│   ├── report/       # Summary report panel
+│   ├── roster/       # Agent persona roster
+│   └── shared/       # Reusable UI components
+├── data/             # Persona presets and mock evidence data
+├── engine/           # Debate engine, mock LLM, proxy config, report builder
+├── hooks/            # Custom hooks
+├── store/            # Zustand state and persistence stores
+├── styles/           # Global CSS and theme styles
+├── types/            # TypeScript types
+└── main.tsx          # Application entry point
+```
+
+## Runtime Notes
+
+- The core debate flow is implemented in `src/engine/DebateEngine.ts` and uses configured providers via `src/engine/LLMClient.ts`.
+- `src/engine/MockLLM.ts` provides persona resolution and local mock generation utilities, but the runtime path is provider-driven when a valid LLM config exists.
+- `src/engine/LLMConfig.ts` can also fall back to `VITE_LLM_API_KEY`, `VITE_LLM_BASE_URL`, and `VITE_LLM_MODEL` if the active provider is missing values.
+- Search is supported through Anthropic/Ark native search and through the function-tool path in `src/engine/SearchResolver.ts` when Tavily or Serper keys are configured.
+
+## Recommended Workflow
+
+1. Open the topic editor and set the debate question.
+2. Configure agent personas in the roster panel.
+3. Choose the debate mode and provider template.
+4. Start brainstorming or jump directly into debate.
+5. Monitor the event stream and send corrections when needed.
+6. Review the generated report and export if desired.
+
+## Roadmap
+
+- Real LLM provider integration (OpenAI, Anthropic, DeepSeek)
+- Search / evidence retrieval from external APIs
+- Multi-topic session management
+- PDF report export
+- WebSocket-based collaboration and real-time sharing
+- Audio or transcript playback
+
+## License
+
+MIT
+
+---
+
+# Group Debate Agent Hub · 议事厅
+
+> **多 Agent 实时辩论指挥台。**
+> 将多个独立人设的 AI Agent 组织成一个智囊团，先做发散式 Brainstorm，再进入结构化辩论，支持人类随时介入，并输出统一结论报告。
+
+> 默认语言：英文。中文内容在下面。
+
+## 项目简介
+
+Group Debate Agent Hub 是一个本地前端原型，展示如何编排多角色 AI 参与 brainstorm 和 debate 流程。它支持：
+
+- 议题发散思考
+- 多轮正反辩论
+- 拟真检索式证据补强
+- 运行中人类纠偏指令
+- 自动生成结构化结论报告
+
+当前实现基于 `src/engine/DebateEngine.ts` 的 Provider 驱动辩论流程，真实执行路径依赖于你在 Gateway 中配置的模型提供者。`src/engine/MockLLM.ts` 仅用于人设解析和辅助生成逻辑，并非默认的运行核心。
+
+## 核心功能
+
+- 可配置 Agent 人设：名称、立场、语气、关注点、论风
+- 2–8 名 Agent 会话，支持预置自动补全
+- Brainstorm 与 Debate 阶段，实时事件与发言流
+- 支持 2–5 轮辩论
+- 拟真搜索资料补强发言
+- 运行中随时插入人类指令
+- 暂停 / 继续 / 终止 / 重新开始
+- Provider 模板：OpenAI / Anthropic / DeepSeek / Moonshot / Ollama / Custom
+- 生成结构化报告：共识、分歧、关键观点、行动建议
+- 使用 `localStorage` 保持会话状态
+
+## 快速开始
+
+安装依赖：
 
 ```bash
 pnpm install
@@ -32,90 +157,64 @@ pnpm install
 pnpm dev
 ```
 
-打开浏览器访问：
+在浏览器打开：
 
 ```text
 http://localhost:5173
 ```
 
-如果你希望构建生产版本，可以使用：
+构建生产版本：
 
 ```bash
 pnpm build
 pnpm preview
 ```
 
-## 🏛 界面导览
-
-```
-┌────────────────────────────────────────────────────────────────┐
-│  Group Debate Hub · 议事厅                            arena ready│
-├────────────────────────────────────────────────────────────────┤
-│  [指挥台]  开始 Brainstorm │ 直接进入 Debate │ 暂停 │ 报告  ...  │
-├──────────────────────────────────────┬─────────────────────────┤
-│  议题工作台 (问题 + 背景 + 介入)      │  Roster  速览           │
-│  ┌──────── Agent 列阵 ────────┐      │  Gateway 速览           │
-│  │   ✦        ⚙        ◇      │      │  Report  速览           │
-│  └─────────────────────────────┘      │                         │
-│  ┌─实时事件流──┐  ┌──发言与论据──┐    │                         │
-│  │ think/cite  │  │ 立场色条卡片 │    │                         │
-│  └─────────────┘  └─────────────┘    │                         │
-└──────────────────────────────────────┴─────────────────────────┘
-```
-
-每个抽屉（Roster / Gateway / Report）可独立展开为右侧大面板。
-
-## 🧠 核心数据流
-
-```mermaid
-flowchart LR
-    UI[Arena UI] --> Store[Zustand Store]
-    Store --> Engine[DebateEngine]
-    Engine --> MockLLM[MockLLM]
-    Engine --> MockSearch[MockSearch]
-    Store -.persist.-> LS[(localStorage)]
-    Engine -.可选.-> RealAPI[真实 LLM]
-```
-
-## 🗂 目录结构
+## 目录说明
 
 ```
 src/
 ├── components/
-│   ├── arena/         # AgentRing / EventStream / SpeechStream / StageControl
-│   ├── roster/        # 人设团配置
-│   ├── gateway/       # 模型接入配置
-│   ├── question/      # 议题工作台
-│   ├── report/        # 报告中心
-│   └── shared/        # Button / Chip / Avatar / Drawer
-├── engine/            # DebateEngine / MockLLM / MockSearch / ReportBuilder
-├── store/             # Zustand 状态 + 持久化
-├── data/              # 8 套人设 + 30 条拟真资料语料
-├── types/             # TypeScript 强类型
-└── styles/globals.css # 主题 + 字体 + 玻璃拟态
+│   ├── arena/        # 议场 UI：AgentRing、EventStream、SpeechStream、StageControl
+│   ├── gateway/      # 模型接入配置
+│   ├── question/     # 议题编辑与提示设置
+│   ├── report/       # 报告面板
+│   ├── roster/       # Agent 人设列表
+│   └── shared/       # 可复用组件
+├── data/             # 人设预设与模拟资料数据
+├── engine/           # 辩论引擎、Mock LLM、代理配置、报告生成器
+├── hooks/            # 自定义 Hook
+├── store/            # Zustand 状态与持久化
+├── styles/           # 全局样式与主题
+├── types/            # TypeScript 类型
+└── main.tsx          # 应用入口
 ```
 
-## 🎨 设计语言
+## 运行说明
 
-- **主题**：**议事厅指挥中心** — 深空蓝黑背景 + 三层径向渐变 + SVG 噪点
-- **配色**：议事金 `#E8B14C` · 思辨青 `#5FE0C7` · 对抗红 `#F47174` · 人类紫 `#9A8CFF`
-- **字体**：标题 `Fraunces` 衬线 · 正文 `Inter Tight` · 中文 `Noto Serif / Sans SC`
-- **质感**：玻璃拟态卡片 + 圆角 + 微动 hover，**避免**典型 AI slop（紫色渐变白底 / Inter 默认）
+- 当前真实运行路径由 `src/engine/DebateEngine.ts` 控制，依赖 `src/engine/LLMConfig.ts` 所解析的 Provider 配置。
+- `src/engine/MockLLM.ts` 只负责人物设定、文本装饰与生成辅助逻辑，不决定是否使用真实模型。
+- 真实搜索功能可通过 Anthropic/Ark 的原生联网或 `src/engine/SearchResolver.ts` 中的 Tavily/Serper Key 启用。
+- 如果 Provider 未配置完整，系统会在 Gateway 中提示填写 API Key、Base URL 和 Model。
 
-## 🧪 接入真实 LLM
+## 推荐使用流程
 
-`engine/MockLLM.ts` 是单文件实现，包含 `brainstorm / debate / summary` 三个钩子。
-在 `GatewayPanel` 配置 API Key 后，把 `MockLLM.debate(...)` 替换为 `fetch` 调用对应 Provider 的 `/chat/completions` 即可。
+1. 打开议题编辑器并设置问题。
+2. 在 Roster 面板配置 Agent 人设。
+3. 选择辩论模式和 Provider 模板。
+4. 启动 Brainstorm 或直接进入 Debate。
+5. 观察事件流并在必要时插入纠偏指令。
+6. 查看生成报告并导出。
 
-## 🔭 Roadmap
+## 路线图
 
-- [ ] 真实 LLM 调用（OpenAI / Anthropic / DeepSeek）
-- [ ] 真实网络搜索（SerpAPI / Tavily / Bing）
-- [ ] 多议题并行 Session
-- [ ] 报告导出 PDF
-- [ ] 团队协作（WebSocket 同步）
-- [ ] 辩论录音回放
+- 真实模型接入（OpenAI、Anthropic、DeepSeek）
+- 外部搜索 / 证据检索
+- 多议题会话管理
+- 报告 PDF 导出
+- WebSocket 协作和实时共享
+- 音频/文本回放
 
-## 📄 License
+## 许可
 
 MIT
