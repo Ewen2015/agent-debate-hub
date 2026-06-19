@@ -4,10 +4,12 @@ import { useGatewayStore } from '@/store/staticStores';
 import { Button } from '@/components/shared/Button';
 import { Chip } from '@/components/shared/Chip';
 import type { ProviderConfig, ProviderTemplate } from '@/types';
+import { buildProxiedUrl } from '@/engine/proxyUrl';
 
 const TEMPLATES: { id: ProviderTemplate; label: string; baseUrl: string; model: string }[] = [
   { id: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
-  { id: 'anthropic', label: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1', model: 'claude-3-5-sonnet' },
+  { id: 'anthropic', label: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1', model: 'claude-3-5-sonnet-latest' },
+  { id: 'ark-coding', label: '火山 Ark Coding', baseUrl: 'https://ark.cn-beijing.volces.com/api/coding/v1', model: 'deepseek-v4-flash' },
   { id: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
   { id: 'moonshot', label: 'Moonshot', baseUrl: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-32k' },
   { id: 'ollama', label: 'Ollama (本地)', baseUrl: 'http://localhost:11434/v1', model: 'llama3.2' },
@@ -47,7 +49,7 @@ export function GatewayPanel() {
   return (
     <div className="flex flex-col gap-4">
       <div className="text-[11px] text-[var(--text-soft)] leading-relaxed">
-        配置 LLM Provider。当前为「模拟模式」时，Agent 行为由本地模板生成；填入 API Key 后点击「测试连接」可立即验证端点可达性与凭据有效性。
+        配置 LLM Provider 以启用真实辩论。<strong className="text-[var(--accent-gold)]">必须填入 API Key、Base URL、Model</strong> 才能开始。推荐使用 Anthropic（原生联网）或火山引擎 Ark Coding Plan（原生联网 + thinking）。也可通过 .env.local 配置 VITE_LLM_API_KEY / VITE_LLM_BASE_URL / VITE_LLM_MODEL。
       </div>
 
       <div className="divider-x" />
@@ -118,50 +120,108 @@ export function GatewayPanel() {
         onClick={reset}
         fullWidth
       >
-        重置为模拟模式
+        重置 Provider 列表
       </Button>
     </div>
   );
 }
 
 async function testConnection(p: ProviderConfig): Promise<TestStatus> {
-  if (p.id === 'mock') {
-    await new Promise((res) => setTimeout(res, 350));
-    return { kind: 'ok', latency: 0, modelEcho: 'mock-debate-v1' };
-  }
-  if (!p.baseUrl) {
-    return { kind: 'fail', reason: 'Base URL 为空' };
-  }
-  if (!p.apiKey) {
-    return { kind: 'fail', reason: 'API Key 为空' };
-  }
-  const url = p.baseUrl.replace(/\/+$/, '') + '/models';
+  if (!p.baseUrl) return { kind: 'fail', reason: 'Base URL 为空' };
+  if (!p.apiKey) return { kind: 'fail', reason: 'API Key 为空' };
+  if (!p.model) return { kind: 'fail', reason: 'Model 为空' };
+
+  const isAnthropic = p.baseUrl.includes('anthropic.com');
+  const isArk = p.baseUrl.includes('ark.cn-beijing.volces.com');
   const start = performance.now();
+
   try {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 8000);
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${p.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      signal: ctrl.signal,
-    });
+    const t = setTimeout(() => ctrl.abort(), 15000);
+
+    let res: Response;
+
+    if (isAnthropic) {
+      // Anthropic：用最小 messages 调用做探测
+      const { url, proxyHeaders } = buildProxiedUrl(p.baseUrl, '/messages');
+      res = await fetch(url, {
+        method: 'POST',
+        signal: ctrl.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': p.apiKey,
+          'anthropic-version': '2023-06-01',
+          ...proxyHeaders,
+        },
+        body: JSON.stringify({
+          model: p.model,
+          max_tokens: 8,
+          messages: [{ role: 'user', content: 'ping' }],
+        }),
+      });
+    } else if (isArk) {
+      // Ark Coding Plan 没有 /models 列表接口，直接用最小 chat/completions 探测
+      const { url, proxyHeaders } = buildProxiedUrl(p.baseUrl, '/chat/completions');
+      res = await fetch(url, {
+        method: 'POST',
+        signal: ctrl.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${p.apiKey}`,
+          ...proxyHeaders,
+        },
+        body: JSON.stringify({
+          model: p.model,
+          max_tokens: 8,
+          messages: [{ role: 'user', content: 'ping' }],
+        }),
+      });
+    } else {
+      // 其他 OpenAI 兼容：先尝试 GET /models，失败则 fallback 到 chat/completions
+      const { url, proxyHeaders } = buildProxiedUrl(p.baseUrl, '/models');
+      res = await fetch(url, {
+        method: 'GET',
+        signal: ctrl.signal,
+        headers: {
+          Authorization: `Bearer ${p.apiKey}`,
+          'Content-Type': 'application/json',
+          ...proxyHeaders,
+        },
+      });
+      if (!res.ok && (res.status === 404 || res.status === 405)) {
+        const fallback = buildProxiedUrl(p.baseUrl, '/chat/completions');
+        res = await fetch(fallback.url, {
+          method: 'POST',
+          signal: ctrl.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${p.apiKey}`,
+            ...fallback.proxyHeaders,
+          },
+          body: JSON.stringify({
+            model: p.model,
+            max_tokens: 8,
+            messages: [{ role: 'user', content: 'ping' }],
+          }),
+        });
+      }
+    }
+
     clearTimeout(t);
     const latency = Math.round(performance.now() - start);
+
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       return {
         kind: 'fail',
-        reason: `HTTP ${res.status}${body ? ` · ${body.slice(0, 80)}` : ''}`,
+        reason: `HTTP ${res.status}${body ? ` · ${body.slice(0, 120)}` : ''}`,
       };
     }
-    return { kind: 'ok', latency };
+    return { kind: 'ok', latency, modelEcho: p.model };
   } catch (e: any) {
     return {
       kind: 'fail',
-      reason: e?.name === 'AbortError' ? '连接超时（8s）' : (e?.message || '网络错误'),
+      reason: e?.name === 'AbortError' ? '连接超时（15s）' : (e?.message || '网络错误'),
     };
   }
 }
@@ -181,7 +241,7 @@ function ProviderCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [testStatus, setTestStatus] = useState<TestStatus>({ kind: 'idle' });
-  const isMock = p.id === 'mock';
+  const needsConfig = !p.apiKey || !p.baseUrl || !p.model;
 
   const handleTest = async () => {
     setTestStatus({ kind: 'running' });
@@ -204,11 +264,11 @@ function ProviderCard({
             <span className="font-display text-sm text-[var(--text-primary)] truncate">
               {p.label}
             </span>
-            {isMock && <Chip tone="gold" size="sm">Mock</Chip>}
-            {p.enabled && !isMock && <Chip tone="cyan" size="sm">Active</Chip>}
+            {needsConfig && <Chip tone="rose" size="sm">未配置</Chip>}
+            {!needsConfig && p.enabled && <Chip tone="cyan" size="sm">Active</Chip>}
           </div>
           <div className="text-[10px] text-[var(--text-muted)] tracking-widish uppercase mt-0.5 truncate font-mono">
-            {p.baseUrl || '— local mock —'} · {p.model}
+            {p.baseUrl || '— 未配置 —'} · {p.model || '—'}
           </div>
         </div>
         <button
@@ -217,14 +277,12 @@ function ProviderCard({
         >
           {expanded ? '收起' : '配置'}
         </button>
-        {!isMock && (
-          <button
-            onClick={onRemove}
-            className="p-1 rounded hover:bg-[var(--accent-rose)]/15 text-[var(--accent-rose)]/70 hover:text-[var(--accent-rose)]"
-          >
-            <Trash2 size={12} />
-          </button>
-        )}
+        <button
+          onClick={onRemove}
+          className="p-1 rounded hover:bg-[var(--accent-rose)]/15 text-[var(--accent-rose)]/70 hover:text-[var(--accent-rose)]"
+        >
+          <Trash2 size={12} />
+        </button>
       </div>
 
       {expanded && (
@@ -233,17 +291,15 @@ function ProviderCard({
             <input
               value={p.label}
               onChange={(e) => onUpdate({ label: e.target.value })}
-              disabled={isMock}
-              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold)] disabled:opacity-50"
+              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold)]"
             />
           </Field>
           <Field label="Base URL">
             <input
               value={p.baseUrl}
               onChange={(e) => onUpdate({ baseUrl: e.target.value })}
-              disabled={isMock}
               placeholder="https://api.openai.com/v1"
-              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)] disabled:opacity-50"
+              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)]"
             />
           </Field>
           <Field label="API Key">
@@ -251,17 +307,16 @@ function ProviderCard({
               type="password"
               value={p.apiKey}
               onChange={(e) => onUpdate({ apiKey: e.target.value })}
-              disabled={isMock}
               placeholder="sk-..."
-              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)] disabled:opacity-50"
+              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)]"
             />
           </Field>
           <Field label="Model">
             <input
               value={p.model}
               onChange={(e) => onUpdate({ model: e.target.value })}
-              disabled={isMock}
-              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)] disabled:opacity-50"
+              placeholder="gpt-4o-mini / claude-3-5-sonnet / deepseek-chat"
+              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)]"
             />
           </Field>
           <div className="grid grid-cols-2 gap-2">
@@ -273,8 +328,7 @@ function ProviderCard({
                 max="2"
                 value={p.temperature}
                 onChange={(e) => onUpdate({ temperature: parseFloat(e.target.value) })}
-                disabled={isMock}
-                className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)] disabled:opacity-50"
+                className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)]"
               />
             </Field>
             <Field label="Max Tokens">
@@ -282,8 +336,7 @@ function ProviderCard({
                 type="number"
                 value={p.maxTokens}
                 onChange={(e) => onUpdate({ maxTokens: parseInt(e.target.value) })}
-                disabled={isMock}
-                className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)] disabled:opacity-50"
+                className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)]"
               />
             </Field>
           </div>
@@ -292,10 +345,9 @@ function ProviderCard({
               type="checkbox"
               checked={p.enableSearch}
               onChange={(e) => onUpdate({ enableSearch: e.target.checked })}
-              disabled={isMock}
               className="accent-[var(--accent-gold)]"
             />
-            允许该模型启用网络搜索（消耗 Token）
+            允许该模型启用网络搜索（Anthropic/Ark 原生联网，其他 Provider 需配置 Tavily/Serper Key）
           </label>
           <div className="flex items-center gap-2 pt-1 flex-wrap">
             <Button
@@ -327,7 +379,7 @@ function ProviderCard({
             )}
             {testStatus.kind === 'idle' && (
               <span className="text-[10px] text-[var(--text-muted)]">
-                {isMock ? '当前为本地模拟，无需联网' : '发起一次 GET /models 请求验证凭据'}
+                {needsConfig ? '请先填入 API Key、Base URL、Model' : '发起一次 GET /models 请求验证凭据'}
               </span>
             )}
           </div>

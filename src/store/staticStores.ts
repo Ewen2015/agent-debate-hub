@@ -15,13 +15,13 @@ const buildDefaultRoster = (): RosterAgent[] =>
   }));
 
 const DEFAULT_PROVIDER: ProviderConfig = {
-  id: 'mock',
-  label: '模拟模式（Mock）',
+  id: 'unconfigured',
+  label: '未配置（需填入 API Key）',
   baseUrl: '',
   apiKey: '',
-  model: 'mock-debate-v1',
+  model: '',
   temperature: 0.7,
-  maxTokens: 1024,
+  maxTokens: 2048,
   enableSearch: true,
   enabled: true,
 };
@@ -134,7 +134,7 @@ export const useGatewayStore = create<GatewayState>()(
   persist(
     (set, get) => ({
       providers: [DEFAULT_PROVIDER],
-      activeProviderId: 'mock',
+      activeProviderId: 'unconfigured',
       addProvider: (p) => {
         const id = uid();
         const newOne: ProviderConfig = {
@@ -144,8 +144,8 @@ export const useGatewayStore = create<GatewayState>()(
           apiKey: p.apiKey || '',
           model: p.model || 'gpt-4o-mini',
           temperature: p.temperature ?? 0.7,
-          maxTokens: p.maxTokens ?? 1024,
-          enableSearch: p.enableSearch ?? false,
+          maxTokens: p.maxTokens ?? 2048,
+          enableSearch: p.enableSearch ?? true,
           enabled: p.enabled ?? true,
         };
         set({ providers: [...get().providers, newOne] });
@@ -165,8 +165,27 @@ export const useGatewayStore = create<GatewayState>()(
         }
       },
       setActive: (id) => set({ activeProviderId: id }),
-      reset: () => set({ providers: [DEFAULT_PROVIDER], activeProviderId: 'mock' }),
+      reset: () => set({ providers: [DEFAULT_PROVIDER], activeProviderId: 'unconfigured' }),
     }),
-    { name: 'gd-hub:gateway:v1' },
+    {
+      name: 'gd-hub:gateway:v1',
+      version: 2,
+      migrate: (persisted: any, version: number) => {
+        // v1 → v2: 清除旧的 mock provider，替换为新的 unconfigured 默认值
+        if (version < 2 && persisted?.providers) {
+          const cleaned = persisted.providers.map((p: any) =>
+            p.id === 'mock' || p.model === 'mock-debate-v1'
+              ? { ...DEFAULT_PROVIDER }
+              : p,
+          );
+          return {
+            ...persisted,
+            providers: cleaned,
+            activeProviderId: cleaned[0]?.id || 'unconfigured',
+          };
+        }
+        return persisted;
+      },
+    },
   ),
 );

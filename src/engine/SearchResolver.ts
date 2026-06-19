@@ -2,14 +2,13 @@
  * SearchResolver：把 LLM 想要的检索词，转换成可引用的 Source。
  *
  * 多 Provider 策略：
- *  1. 若 LLM Provider 是 Ark Coding Plan，直接让模型自己联网（web_search tool）。
- *     这种情况本文件不被调用。
- *  2. 否则通过搜索引擎 API 拉真资料：Tavily / Serper / SerpAPI。
- *  3. 都没有则降级到本地 Mock 语料（标注"演示数据"）。
+ *  1. 通过搜索引擎 API 拉真资料：Tavily / Serper / SerpAPI。
+ *  2. 都没有则返回空数组（不使用假数据，保持诚实）。
+ *  3. 对于支持原生联网的 Provider（Anthropic / Ark），LLM 会直接搜索，
+ *     不经过本文件。
  */
 
 import type { Source } from '@/types';
-import { SEARCH_CORPUS } from '@/data/corpus';
 
 const TAVILY_API = 'https://api.tavily.com/search';
 const SERPER_API = 'https://google.serper.dev/search';
@@ -79,9 +78,9 @@ export async function resolveSource(query: string, recencyDays?: number): Promis
       }
     } catch {}
   }
-  // 3. Mock 降级
-  return mockSearch(query);
-}
+  // 3. 无搜索 API Key — 返回空结果（不使用假数据，保持诚实）
+  return [];
+};
 
 const domainOf = (url: string) => {
   try {
@@ -89,20 +88,4 @@ const domainOf = (url: string) => {
   } catch {
     return '';
   }
-};
-
-const mockSearch = (query: string): Source[] => {
-  const tokens = query
-    .toLowerCase()
-    .split(/\s+/)
-    .filter((w) => w.length > 1);
-  const scored = SEARCH_CORPUS.map((s) => {
-    const hay = (s.title + ' ' + s.snippet).toLowerCase();
-    let score = 0;
-    for (const t of tokens) if (hay.includes(t)) score += 2;
-    return { s, score };
-  })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3);
-  return scored.map((x) => ({ ...x.s, snippet: `[演示数据] ${x.s.snippet}` }));
 };

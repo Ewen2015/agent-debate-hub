@@ -1,13 +1,15 @@
 /**
- * 重写后的 DebateEngine
+ * DebateEngine — 真实多 Agent 辩论引擎
  *
- * 关键变化（vs. v0.1 demo）：
- *  1. 每个 Agent 独立维护 ChatMessage[] 历史，跨轮次保留
- *  2. 真实 LLM 调用（OpenAI / Anthropic / Ark Coding Plan）
- *  3. 把 web_search 工具交给 LLM 自主决定何时检索
- *  4. 思考过程 (reasoning_content) 作为独立事件流，可视化展示
+ * 核心设计：
+ *  1. 每个 Agent 独立维护 ChatMessage[] 历史，跨轮次保留，持久化到 localStorage
+ *  2. 真实 LLM 调用（OpenAI / Anthropic / Ark Coding Plan），不使用 Mock 模板
+ *  3. 联网搜索：
+ *     - Anthropic / Ark：原生联网，模型自主搜索
+ *     - 其他 OpenAI 兼容：function tool + Tavily/Serper
+ *  4. 思考过程：通过 <thinking> 标签 + reasoning_content 双通道获取
  *  5. 立场 prompt 与对方发言交叉引用，鼓励"真辩论"
- *  6. 失败可重试、可降级为 Mock（仅当 LLM 不可用时）
+ *  6. 配置缺失时抛出明确错误，不静默降级
  */
 
 import { resolvePersona } from '@/engine/MockLLM';
@@ -23,12 +25,28 @@ const delay = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
 
 // 每个 Agent 的独立对话历史。key: agentId, value: messages[]
 const memory: Map<string, ChatMessage[]> = new Map();
-// Agent 的最后已知来源索引（用于 sources 持久化）
-const lastSources: Map<string, Source[]> = new Map();
 // 用户介入队列
 const interruptBuffer: string[] = [];
 
-const newSessionId = () => Math.random().toString(36).slice(2, 10);
+/**
+ * 校验 LLM 配置是否可用。不可用则抛出明确错误。
+ */
+export function validateLLMConfig(): { ok: boolean; error?: string } {
+  const cfg = getLLMConfig();
+  if (!cfg) {
+    return { ok: false, error: '未配置 LLM Provider。请在 Gateway 面板中添加并配置一个 Provider（填入 API Key、Base URL、Model），或在 .env.local 中设置 VITE_LLM_API_KEY / VITE_LLM_BASE_URL / VITE_LLM_MODEL。' };
+  }
+  if (!cfg.apiKey || cfg.apiKey.trim().length < 5) {
+    return { ok: false, error: 'API Key 为空或过短。请在 Gateway 面板中填入有效的 API Key，或在 .env.local 中设置 VITE_LLM_API_KEY。' };
+  }
+  if (!cfg.baseUrl) {
+    return { ok: false, error: 'Base URL 为空。请在 Gateway 面板中填入 Provider 的 API 端点地址。' };
+  }
+  if (!cfg.model) {
+    return { ok: false, error: 'Model 名称为空。请在 Gateway 面板中填入模型名称（如 gpt-4o-mini、claude-3-5-sonnet 等）。' };
+  }
+  return { ok: true };
+}
 
 export const pushHumanInterrupt = (text: string) => {
   const cleaned = text.trim();
@@ -62,9 +80,6 @@ const getLLMConfig = (): LLMConfig | null => {
   };
 };
 
-const isMock = (cfg: LLMConfig | null) =>
-  !cfg || !cfg.apiKey || cfg.apiKey.startsWith('mock');
-
 const setAgentStatus = (id: string, status: RosterAgent['status']) => {
   useRosterStore.getState().updateAgent(id, { status });
 };
@@ -81,10 +96,37 @@ const waitIfPaused = async () => {
   }
 };
 
+/**
+ * 重置引擎内存（新会话时调用）。
+ * 同时清空 sessionStore 中的持久化记忆。
+ */
 const resetMemory = () => {
   memory.clear();
-  lastSources.clear();
   interruptBuffer.length = 0;
+  useSessionStore.getState().clearAgentMemory();
+};
+
+/**
+ * 把单个 Agent 的内存持久化到 sessionStore（localStorage）。
+ * 页面刷新后可通过 loadMemoryFromStore 恢复。
+ */
+const persistAgentMemory = (agentId: string) => {
+  const msgs = memory.get(agentId);
+  if (!msgs) return;
+  useSessionStore.getState().setAgentMemory(
+    agentId,
+    msgs.map((m) => ({ role: m.role, content: m.content })),
+  );
+};
+
+/**
+ * 从 sessionStore 恢复所有 Agent 的内存。
+ */
+const loadMemoryFromStore = () => {
+  const stored = useSessionStore.getState().agentMemory;
+  for (const [agentId, msgs] of Object.entries(stored)) {
+    memory.set(agentId, msgs as ChatMessage[]);
+  }
 };
 
 // ── System prompt 构造：人设 + 立场 + 当前议题 + 议事规则 ──
@@ -111,19 +153,29 @@ ${persona.tone}
 ${stanceDesc}
 
 ## 议事规则（务必遵守）
-1. **每一轮发言都必须先思考再回答**：在 <thinking>...</thinking> 标签中输出 100-300 字的真实思考过程（拆解对方观点、寻找反例、检索资料、权衡论据）。思考后再用 <answer>...</answer> 标签输出正式发言正文（不超过 200 字）。
-2. **交叉引用**：发言中必须显式回应前文某一 Agent 的具体观点，使用「回应 @[名字] 关于「...」的观点」格式。
-3. **数据优先**：涉及数字时给出量级与来源倾向（如「据 2024 年 Gartner 报告」）。
+1. **必须先深度思考再发言**：每次发言前，在 <thinking> 标签中输出至少 200 字的真实思考过程。思考过程必须包含：
+   - 拆解议题或对方观点的核心假设
+   - 从你的角色视角寻找论据或反例
+   - 权衡证据的强弱
+   - 决定你的发言策略
+   然后在 <answer> 标签中输出正式发言正文（不超过 250 字）。
+
+2. **交叉引用**：发言中必须显式回应前文某一 Agent 的具体观点，使用「回应 @[名字] 关于「...」的观点」格式。如果你是首位发言者，则阐述你的核心论点。
+
+3. **证据优先**：涉及事实性主张时，优先调用 web_search 检索最新数据、案例或报告来支撑你的论点。不要凭空捏造数据或引用不存在的来源。
+
 4. **诚实性**：当对方证据更强时，明确说「这一点我需要调整立场」而非诡辩。
-5. **不要重复**：不要复读自己上轮的论点；要在前文基础上推进。
+
+5. **推进性**：不要复读自己上轮的论点；要在前文基础上推进、深化或转向新角度。
+
 6. **保持人设**：语气、关注点、价值观必须与上面人设一致，不要变成"和事佬"。
 
 ## 输出格式（严格遵守）
 <thinking>
-你的真实思考过程。
+你的真实思考过程（至少 200 字，展示你的推理链条）。
 </thinking>
 <answer>
-你的正式发言。
+你的正式发言（不超过 250 字）。
 </answer>`;
 };
 
@@ -137,6 +189,7 @@ const parseAnswer = (raw: string): { thinking: string; answer: string } => {
 };
 
 // ── 多轮 function calling 循环：让 LLM 自己决定搜几次 ──
+// 对于 Anthropic / Ark，原生搜索在 chat() 内部完成，不会进入 tool call 循环。
 async function chatWithTools(
   cfg: LLMConfig,
   messages: ChatMessage[],
@@ -150,6 +203,25 @@ async function chatWithTools(
     if (abort.aborted) throw new Error('aborted');
     const resp = await chat(cfg, m, { signal: abort, onReasoning: (r) => (aggregatedReasoning = r) });
     onReasoning(resp.reasoning || '');
+
+    // 捕获原生搜索返回的 sources（Anthropic / Ark）
+    if (resp.sources?.length) {
+      const mapped: Source[] = resp.sources.map((s) => ({
+        title: s.title,
+        url: s.url,
+        domain: s.domain,
+        snippet: s.snippet || '',
+      }));
+      sources.push(...mapped);
+      pushEvent({
+        id: uid(),
+        ts: Date.now(),
+        agentId: 'system',
+        type: 'search',
+        payload: { text: `原生联网检索返回 ${mapped.length} 条结果`, sources: mapped },
+      });
+    }
+
     if (!resp.toolCalls?.length) {
       return { final: resp.content, reasoning: aggregatedReasoning, sources };
     }
@@ -166,7 +238,7 @@ async function chatWithTools(
         })),
       },
     ];
-    // 执行 web_search
+    // 执行 web_search（仅 OpenAI 兼容 Provider 会走到这里）
     for (const tc of resp.toolCalls) {
       if (tc.name !== 'web_search') continue;
       const query = (tc.arguments as any).query || '';
@@ -175,11 +247,28 @@ async function chatWithTools(
         id: uid(),
         ts: Date.now(),
         agentId: 'system',
-        type: 'system',
-        payload: { text: `🔍 触发联网检索：「${query}」` },
+        type: 'search',
+        payload: { text: `触发联网检索：「${query}」` },
       });
       const resolved = await resolveSource(query, recency);
-      sources.push(...resolved);
+      if (resolved.length) {
+        sources.push(...resolved);
+        pushEvent({
+          id: uid(),
+          ts: Date.now(),
+          agentId: 'system',
+          type: 'cite',
+          payload: { text: `检索到 ${resolved.length} 条资料`, sources: resolved },
+        });
+      } else {
+        pushEvent({
+          id: uid(),
+          ts: Date.now(),
+          agentId: 'system',
+          type: 'search',
+          payload: { text: `未检索到相关资料（需配置 Tavily 或 Serper API Key 才能使用 function tool 搜索）` },
+        });
+      }
       const toolResult = resolved
         .map(
           (s) =>
@@ -208,12 +297,26 @@ export const DebateEngine = {
   interruptBuffer,
   memory,
   resetMemory,
+  validateLLMConfig,
 
   /**
    * Brainstorm：每个 Agent 独立基于人设给出 1-2 个发散观点。
-   * 真实 LLM 模式下，system prompt 强约束"先想再说"；每个 Agent 独立消息历史。
+   * system prompt 强约束"先想再说"；每个 Agent 独立消息历史，持久化到 localStorage。
    */
   async startBrainstorm() {
+    // 校验 LLM 配置
+    const validation = validateLLMConfig();
+    if (!validation.ok) {
+      pushEvent({
+        id: uid(),
+        ts: Date.now(),
+        agentId: 'system',
+        type: 'system',
+        payload: { text: `❌ ${validation.error}`, subText: '配置错误' },
+      });
+      return;
+    }
+
     const { session, setPhase, clearEvents, clearSpeeches } = useSessionStore.getState();
     if (!session.question) return;
     resetMemory();
@@ -229,8 +332,7 @@ export const DebateEngine = {
       payload: { text: `Brainstorm 开始：${session.question}` },
     });
 
-    const cfg = getLLMConfig();
-    const mock = isMock(cfg);
+    const cfg = getLLMConfig()!;
 
     const agents = useRosterStore.getState().agents;
     for (const agent of agents) {
@@ -246,7 +348,7 @@ export const DebateEngine = {
           role: 'user',
           content: `议题：「${session.question}」${
             session.background ? `\n\n背景资料：${session.background}` : ''
-          }\n\n请基于你的人设，先在 <thinking> 里深度思考（200-300 字），再用 <answer> 给出 1-2 个发散观点（不超过 200 字）。不要重复前面 Agent 的视角。`,
+          }\n\n请基于你的人设，先在 <thinking> 里深度思考（至少 200 字），再用 <answer> 给出 1-2 个发散观点（不超过 250 字）。不要重复前面 Agent 的视角。`,
         },
       ];
       memory.set(agent.id, history);
@@ -256,13 +358,13 @@ export const DebateEngine = {
         id: uid(),
         ts: Date.now(),
         agentId: agent.id,
-        type: 'think',
-        payload: { text: `${persona.name} 正在围绕议题深度思考……`, subText: '思考中' },
+        type: 'system',
+        payload: { text: `${persona.name} 开始分析议题（调用 ${cfg.model}）…`, subText: '调用 LLM' },
       });
 
       try {
-        const result = await speak(agent, history, cfg, mock, /*round*/ 0);
-        const { thinking, answer } = parseAnswer(result.final || result.fallback);
+        const result = await speak(agent, history, cfg, /*round*/ 0);
+        const { thinking, answer } = parseAnswer(result.final);
         if (thinking) {
           pushEvent({
             id: uid(),
@@ -291,6 +393,8 @@ export const DebateEngine = {
         });
         // 把 assistant 真实回复加入历史
         history.push({ role: 'assistant', content: result.final });
+        // 持久化记忆到 localStorage
+        persistAgentMemory(agent.id);
       } catch (e: any) {
         pushEvent({
           id: uid(),
@@ -318,12 +422,29 @@ export const DebateEngine = {
    * Debate：多轮对抗。每一轮：
    *   - 把"前一轮所有 Agent 发言"摘要 + 当前发言请求塞进每个 Agent 的历史
    *   - 调用真实 LLM，prompt 强约束交叉引用与反驳
-   *   - 真实联网（LLM 自主决定 web_search）
+   *   - 联网搜索（Anthropic/Ark 原生 / 其他 Provider function tool）
+   *   - 记忆持久化到 localStorage，跨轮次保留
    */
   async enterDebate() {
+    // 校验 LLM 配置
+    const validation = validateLLMConfig();
+    if (!validation.ok) {
+      pushEvent({
+        id: uid(),
+        ts: Date.now(),
+        agentId: 'system',
+        type: 'system',
+        payload: { text: `❌ ${validation.error}`, subText: '配置错误' },
+      });
+      return;
+    }
+
     const { session, setPhase, setCurrentRound } = useSessionStore.getState();
     setPhase('debate');
     setCurrentRound(0);
+
+    // 从 sessionStore 恢复 Brainstorm 阶段积累的记忆
+    loadMemoryFromStore();
 
     pushEvent({
       id: uid(),
@@ -333,8 +454,7 @@ export const DebateEngine = {
       payload: { text: `Debate 开始：共 ${session.maxRounds} 轮，每轮全员对抗推演。` },
     });
 
-    const cfg = getLLMConfig();
-    const mock = isMock(cfg);
+    const cfg = getLLMConfig()!;
 
     for (let r = 1; r <= session.maxRounds; r++) {
       if (isStopped()) return;
@@ -377,7 +497,7 @@ export const DebateEngine = {
           role: 'user',
           content: `进入第 ${r} 轮。${
             recentSpeeches ? `\n\n上一轮他人发言：\n${recentSpeeches}` : '你是本轮第一位发言者。'
-          }${interruptNote}\n\n请按你的角色立场：\n- 在 <thinking> 中深度反驳或推进（200-300 字，必须显式回应对方至少一个观点）\n- 在 <answer> 中输出 200 字内的正式发言\n- 必要时调用 web_search 检索最新数据/案例（最多 2 次）\n- 不要复读你之前的论点`,
+          }${interruptNote}\n\n请按你的角色立场：\n- 在 <thinking> 中深度反驳或推进（至少 200 字，必须显式回应对方至少一个观点）\n- 在 <answer> 中输出 250 字内的正式发言\n- 必要时调用 web_search 检索最新数据/案例\n- 不要复读你之前的论点`,
         };
         history.push(userMsg);
 
@@ -386,13 +506,13 @@ export const DebateEngine = {
           id: uid(),
           ts: Date.now(),
           agentId: agent.id,
-          type: 'think',
-          payload: { text: `${persona.name} 第 ${r} 轮深度思考中……`, subText: '思考中' },
+          type: 'system',
+          payload: { text: `${persona.name} 第 ${r} 轮分析中（调用 ${cfg.model}）…`, subText: '调用 LLM' },
         });
 
         try {
-          const result = await speak(agent, history, cfg, mock, r);
-          const { thinking, answer } = parseAnswer(result.final || result.fallback);
+          const result = await speak(agent, history, cfg, r);
+          const { thinking, answer } = parseAnswer(result.final);
           if (thinking) {
             pushEvent({
               id: uid(),
@@ -420,6 +540,8 @@ export const DebateEngine = {
             payload: { text: answer, subText: `${persona.name} 发言`, sources: result.sources },
           });
           history.push({ role: 'assistant', content: result.final });
+          // 持久化记忆
+          persistAgentMemory(agent.id);
         } catch (e: any) {
           pushEvent({
             id: uid(),
@@ -474,68 +596,49 @@ export const DebateEngine = {
 
 interface SpeakResult {
   final: string;
-  fallback: string;
   sources: Source[];
 }
 
 /**
- * 实际调用 LLM 或 fallback 到 MockLLM。返回 raw content + 思考 + 来源。
+ * 调用真实 LLM。不使用 Mock 模式。
+ * 如果 LLM 不可用，抛出错误并在事件流中提示。
  */
 async function speak(
   agent: RosterAgent,
   history: ChatMessage[],
-  cfg: LLMConfig | null,
-  mock: boolean,
+  cfg: LLMConfig,
   round: number,
 ): Promise<SpeakResult> {
-  if (!mock && cfg) {
-    try {
-      const ctrl = new AbortController();
-      const result = await chatWithTools(
-        cfg,
-        history,
-        ctrl.signal,
-        (r) => {
-          if (r) {
-            const persona = resolvePersona(agent);
-            pushEvent({
-              id: uid(),
-              ts: Date.now(),
-              agentId: agent.id,
-              type: 'think',
-              payload: { text: r, subText: '思考' },
-            });
-          }
-        },
-      );
-      return { final: result.final, fallback: result.final, sources: result.sources };
-    } catch (e: any) {
-      if (e instanceof LLMError) {
-        pushEvent({
-          id: uid(),
-          ts: Date.now(),
-          agentId: 'system',
-          type: 'system',
-          payload: { text: `LLM 错误 (${e.status})，回退到模板生成。`, subText: '降级' },
-        });
-      }
+  const ctrl = new AbortController();
+  try {
+    const result = await chatWithTools(
+      cfg,
+      history,
+      ctrl.signal,
+      (r) => {
+        if (r) {
+          const persona = resolvePersona(agent);
+          pushEvent({
+            id: uid(),
+            ts: Date.now(),
+            agentId: agent.id,
+            type: 'think',
+            payload: { text: r, subText: `${persona.name} 实时思考` },
+          });
+        }
+      },
+    );
+    return { final: result.final, sources: result.sources };
+  } catch (e: any) {
+    if (e instanceof LLMError) {
+      pushEvent({
+        id: uid(),
+        ts: Date.now(),
+        agentId: 'system',
+        type: 'system',
+        payload: { text: `LLM 调用失败 (${e.status})：${e.body?.slice(0, 200) || e.message}`, subText: 'LLM 错误' },
+      });
     }
+    throw e;
   }
-  // Mock 模式：使用 v0.1 模板但带真实记忆交叉引用
-  const { MockLLM } = await import('@/engine/MockLLM');
-  const persona = resolvePersona(agent);
-  const session = useSessionStore.getState().session;
-  const lastOpponent = session.speeches
-    .filter((s) => s.round === round - 1 && s.agentId !== agent.id)
-    .slice(-1)[0];
-  const text = await MockLLM.debate({
-    agent,
-    persona,
-    question: session.question,
-    round,
-    isOpening: !lastOpponent,
-    latestOpponentText: lastOpponent?.text,
-    interrupts: [...interruptBuffer].slice(-2),
-  });
-  return { final: `<thinking>（Mock 模式，无真实思考过程）</thinking>\n<answer>${text}</answer>`, fallback: text, sources: [] };
 }

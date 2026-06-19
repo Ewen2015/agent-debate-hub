@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { DebateEvent, FinalReport, Phase, Session, Speech } from '@/types';
+import type { AgentMemory, DebateEvent, FinalReport, Phase, Session, Speech } from '@/types';
 
 interface SessionState {
   session: Session;
+  agentMemory: AgentMemory;
   setQuestion: (q: string, bg?: string) => void;
   setPhase: (p: Phase) => void;
   setPaused: (v: boolean) => void;
@@ -16,6 +17,10 @@ interface SessionState {
   reset: () => void;
   setReport: (r: FinalReport | null) => void;
   report: FinalReport | null;
+  /** 更新单个 Agent 的记忆 */
+  setAgentMemory: (agentId: string, messages: { role: string; content: string }[]) => void;
+  /** 清空所有 Agent 记忆 */
+  clearAgentMemory: () => void;
 }
 
 const emptySession = (): Session => ({
@@ -40,6 +45,7 @@ export const useSessionStore = create<SessionState>()(
   persist(
     (set) => ({
       session: emptySession(),
+      agentMemory: {},
       report: null,
       setQuestion: (q, bg) =>
         set((s) => ({
@@ -68,12 +74,27 @@ export const useSessionStore = create<SessionState>()(
         })),
       clearEvents: () => set((s) => ({ session: { ...s.session, events: [] } })),
       clearSpeeches: () => set((s) => ({ session: { ...s.session, speeches: [] } })),
-      reset: () => set({ session: emptySession(), report: null }),
+      reset: () => set({ session: emptySession(), report: null, agentMemory: {} }),
       setReport: (r) => set({ report: r }),
+      setAgentMemory: (agentId, messages) =>
+        set((s) => ({
+          agentMemory: {
+            ...s.agentMemory,
+            [agentId]: messages.map((m) => ({
+              role: m.role as 'system' | 'user' | 'assistant',
+              content: m.content,
+            })),
+          },
+        })),
+      clearAgentMemory: () => set({ agentMemory: {} }),
     }),
     {
       name: 'gd-hub:session:v1',
-      partialize: (s) => ({ session: s.session, report: s.report }),
+      partialize: (s) => ({
+        session: s.session,
+        report: s.report,
+        agentMemory: s.agentMemory,
+      }),
     },
   ),
 );

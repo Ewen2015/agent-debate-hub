@@ -1,11 +1,11 @@
-import { Lightbulb, Swords, Pause, Play, RotateCcw, FileText, Settings2, Users, Loader2, Sun, Moon } from 'lucide-react';
+import { Lightbulb, Swords, Pause, Play, RotateCcw, FileText, Settings2, Users, Loader2, Sun, Moon, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { Chip } from '@/components/shared/Chip';
 import { useSessionStore } from '@/store/sessionStore';
 import { useUIStore } from '@/store/staticStores';
 import { useThemeStore } from '@/store/themeStore';
 import { useGatewayStore } from '@/store/staticStores';
-import { DebateEngine } from '@/engine/DebateEngine';
+import { DebateEngine, validateLLMConfig } from '@/engine/DebateEngine';
 import { ReportBuilder } from '@/engine/ReportBuilder';
 import { useState } from 'react';
 
@@ -39,6 +39,8 @@ export function StageControl() {
   const canStart = session.question.trim().length > 4 && session.phase === 'idle';
   const brainstormDone = session.phase === 'idle' && session.speeches.some((s) => s.round === 0);
   const isRunning = session.phase === 'brainstorm' || session.phase === 'debate';
+  const llmCheck = validateLLMConfig();
+  const llmReady = llmCheck.ok;
 
   const handleStart = async () => {
     if (!canStart) return;
@@ -121,13 +123,26 @@ export function StageControl() {
 
       <div className="h-7 w-px bg-[var(--border-soft)]" />
 
+      {!llmReady && session.phase === 'idle' && (
+        <div className="flex items-center gap-2 text-[11px] text-[var(--accent-rose)]/90 bg-[var(--accent-rose)]/10 rounded-lg px-3 py-1.5">
+          <AlertCircle size={13} className="flex-shrink-0" />
+          <span className="flex-1">未配置 LLM — 请在 Gateway 中填入 API Key</span>
+          <button
+            onClick={() => setGateway(true)}
+            className="text-[10px] tracking-widish uppercase text-[var(--accent-rose)] hover:text-[var(--text-primary)] transition-colors flex-shrink-0"
+          >
+            去配置 →
+          </button>
+        </div>
+      )}
+
       {session.phase === 'idle' && !brainstormDone && (
         <Button
           variant="primary"
           size="md"
           icon={busy === 'brainstorm' ? <Loader2 size={14} className="animate-spin" /> : <Lightbulb size={14} />}
           onClick={handleStart}
-          disabled={!canStart || !!busy}
+          disabled={!canStart || !!busy || !llmReady}
         >
           开始 Brainstorm
         </Button>
@@ -150,7 +165,7 @@ export function StageControl() {
             size="md"
             icon={busy === 'debate' ? <Loader2 size={14} className="animate-spin" /> : <Swords size={14} />}
             onClick={handleEnterDebate}
-            disabled={!!busy}
+            disabled={!!busy || !llmReady}
           >
             进入 Debate →
           </Button>

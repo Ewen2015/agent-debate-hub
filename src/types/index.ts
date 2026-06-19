@@ -78,6 +78,15 @@ export interface Session {
   paused: boolean;
 }
 
+/** 持久化的 Agent 记忆消息（简化版，只保留 role + content） */
+export interface MemoryMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+/** Agent 记忆映射：agentId → 对话历史 */
+export type AgentMemory = Record<string, MemoryMessage[]>;
+
 export interface FinalReport {
   sessionId: string;
   generatedAt: number;
@@ -106,4 +115,4 @@ export interface ProviderConfig {
   enabled: boolean;
 }
 
-export type ProviderTemplate = 'openai' | 'anthropic' | 'deepseek' | 'moonshot' | 'ollama' | 'custom';
+export type ProviderTemplate = 'openai' | 'anthropic' | 'deepseek' | 'moonshot' | 'ark-coding' | 'ollama' | 'custom';
