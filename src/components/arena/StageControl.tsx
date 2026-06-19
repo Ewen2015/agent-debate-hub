@@ -4,9 +4,27 @@ import { Chip } from '@/components/shared/Chip';
 import { useSessionStore } from '@/store/sessionStore';
 import { useUIStore } from '@/store/staticStores';
 import { useThemeStore } from '@/store/themeStore';
+import { useGatewayStore } from '@/store/staticStores';
 import { DebateEngine } from '@/engine/DebateEngine';
 import { ReportBuilder } from '@/engine/ReportBuilder';
 import { useState } from 'react';
+
+const getLLMConfig = () => {
+  const store = useGatewayStore.getState();
+  const cur = store.providers.find((p) => p.id === store.activeProviderId);
+  if (!cur) return null;
+  const envKey = (import.meta as any).env?.VITE_LLM_API_KEY as string | undefined;
+  const envBase = (import.meta as any).env?.VITE_LLM_BASE_URL as string | undefined;
+  const envModel = (import.meta as any).env?.VITE_LLM_MODEL as string | undefined;
+  return {
+    baseUrl: envBase || cur.baseUrl,
+    apiKey: envKey || cur.apiKey,
+    model: envModel || cur.model,
+    temperature: cur.temperature,
+    maxTokens: cur.maxTokens,
+    enableSearch: cur.enableSearch,
+  };
+};
 
 export function StageControl() {
   const session = useSessionStore((s) => s.session);
@@ -45,16 +63,28 @@ export function StageControl() {
   const handleResume = () => DebateEngine.resume();
   const handleStop = () => DebateEngine.stop();
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (session.speeches.length === 0) return;
-    const r = ReportBuilder.build({
-      sessionId: session.id,
-      question: session.question,
-      speeches: session.speeches,
-    });
-    useSessionStore.getState().setReport(r);
-    useSessionStore.getState().setPhase('report');
-    setReportDrawer(true);
+    setBusy('report');
+    try {
+      const r = await ReportBuilder.build(
+        { sessionId: session.id, question: session.question, speeches: session.speeches },
+        getLLMConfig(),
+      );
+      useSessionStore.getState().setReport(r);
+      useSessionStore.getState().setPhase('report');
+      setReportDrawer(true);
+    } catch (e: any) {
+      useSessionStore.getState().pushEvent({
+        id: 'sys-' + Date.now(),
+        ts: Date.now(),
+        agentId: 'system',
+        type: 'system',
+        payload: { text: `报告生成失败：${e?.message || '未知错误'}` },
+      });
+    } finally {
+      setBusy(null);
+    }
   };
 
   const handleReset = () => {
@@ -166,11 +196,11 @@ export function StageControl() {
         <Button
           variant="primary"
           size="md"
-          icon={<FileText size={14} />}
+          icon={busy === 'report' ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
           onClick={handleGenerate}
-          disabled={session.speeches.length === 0}
+          disabled={session.speeches.length === 0 || !!busy}
         >
-          生成报告
+          {busy === 'report' ? '生成中' : '生成报告'}
         </Button>
       )}
 
