@@ -66,6 +66,42 @@ export class LLMError extends Error {
   }
 }
 
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+
+const stringValue = (value: unknown) => (typeof value === 'string' ? value : undefined);
+
+export function describeLLMError(error: LLMError) {
+  let parsed: unknown = null;
+  try {
+    parsed = JSON.parse(error.body);
+  } catch {
+    parsed = null;
+  }
+
+  const root = asRecord(parsed);
+  const nested = asRecord(root?.error);
+  const code = stringValue(nested?.code) || stringValue(nested?.type) || stringValue(root?.code);
+  const message =
+    stringValue(nested?.message) ||
+    stringValue(root?.message) ||
+    error.body ||
+    error.message;
+
+  if (error.status === 429) {
+    const resetMatch = message.match(/reset at ([^.]+?)(?:\.|$)/i);
+    const resetText = resetMatch?.[1]?.trim();
+    const codeText = code ? ` ${code}` : '';
+    return resetText
+      ? `模型账号额度已用完（429${codeText}）。恢复时间：${resetText}。可等待恢复，或在 Gateway/.env.local 切换到还有额度的 Provider/API Key。`
+      : `模型账号额度或请求频率受限（429${codeText}）。请稍后重试，或在 Gateway/.env.local 切换到还有额度的 Provider/API Key。`;
+  }
+
+  return `${error.message}：${message.slice(0, 220)}`;
+}
+
 const WEB_SEARCH_TOOL_OPENAI = {
   type: 'function' as const,
   function: {

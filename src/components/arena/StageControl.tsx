@@ -4,26 +4,13 @@ import { Chip } from '@/components/shared/Chip';
 import { useSessionStore } from '@/store/sessionStore';
 import { useUIStore } from '@/store/staticStores';
 import { useThemeStore } from '@/store/themeStore';
-import { useGatewayStore } from '@/store/staticStores';
 import { DebateEngine, validateLLMConfig } from '@/engine/DebateEngine';
+import { resolveLLMConfig } from '@/engine/LLMConfig';
 import { ReportBuilder } from '@/engine/ReportBuilder';
 import { useState } from 'react';
 
 const getLLMConfig = () => {
-  const store = useGatewayStore.getState();
-  const cur = store.providers.find((p) => p.id === store.activeProviderId);
-  if (!cur) return null;
-  const envKey = (import.meta as any).env?.VITE_LLM_API_KEY as string | undefined;
-  const envBase = (import.meta as any).env?.VITE_LLM_BASE_URL as string | undefined;
-  const envModel = (import.meta as any).env?.VITE_LLM_MODEL as string | undefined;
-  return {
-    baseUrl: envBase || cur.baseUrl,
-    apiKey: envKey || cur.apiKey,
-    model: envModel || cur.model,
-    temperature: cur.temperature,
-    maxTokens: cur.maxTokens,
-    enableSearch: cur.enableSearch,
-  };
+  return resolveLLMConfig();
 };
 
 export function StageControl() {

@@ -13,9 +13,9 @@
  */
 
 import { resolvePersona } from '@/engine/MockLLM';
-import { chat, LLMError, type ChatMessage, type LLMConfig } from '@/engine/LLMClient';
+import { chat, describeLLMError, LLMError, type ChatMessage, type LLMConfig } from '@/engine/LLMClient';
+import { resolveLLMConfig } from '@/engine/LLMConfig';
 import { useRosterStore } from '@/store/staticStores';
-import { useGatewayStore } from '@/store/staticStores';
 import { useSessionStore } from '@/store/sessionStore';
 import type { DebateEvent, RosterAgent, Source, Speech } from '@/types';
 import { resolveSource } from '@/engine/SearchResolver';
@@ -63,21 +63,7 @@ export const pushHumanInterrupt = (text: string) => {
 };
 
 const getLLMConfig = (): LLMConfig | null => {
-  const store = useGatewayStore.getState();
-  const cur = store.providers.find((p) => p.id === store.activeProviderId);
-  if (!cur) return null;
-  // 优先使用 env 注入的 key（更安全），其次用户输入
-  const envKey = (import.meta as any).env?.VITE_LLM_API_KEY as string | undefined;
-  const envBase = (import.meta as any).env?.VITE_LLM_BASE_URL as string | undefined;
-  const envModel = (import.meta as any).env?.VITE_LLM_MODEL as string | undefined;
-  return {
-    baseUrl: envBase || cur.baseUrl,
-    apiKey: envKey || cur.apiKey,
-    model: envModel || cur.model,
-    temperature: cur.temperature,
-    maxTokens: cur.maxTokens,
-    enableSearch: cur.enableSearch,
-  };
+  return resolveLLMConfig();
 };
 
 const setAgentStatus = (id: string, status: RosterAgent['status']) => {
@@ -636,7 +622,7 @@ async function speak(
         ts: Date.now(),
         agentId: 'system',
         type: 'system',
-        payload: { text: `LLM 调用失败 (${e.status})：${e.body?.slice(0, 200) || e.message}`, subText: 'LLM 错误' },
+        payload: { text: describeLLMError(e), subText: 'LLM 错误' },
       });
     }
     throw e;
