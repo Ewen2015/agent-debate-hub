@@ -67,6 +67,8 @@ export interface Speech {
 
 export interface Session {
   id: string;
+  title: string;
+  titleEdited: boolean;
   question: string;
   background?: string;
   phase: Phase;
@@ -91,6 +93,8 @@ export interface FinalReport {
   sessionId: string;
   generatedAt: number;
   tldr: string;
+  summary: string;
+  evaluation: string[];
   consensus: string[];
   disagreements: string[];
   actions: string[];

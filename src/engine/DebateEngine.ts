@@ -23,10 +23,26 @@ import { resolveSource } from '@/engine/SearchResolver';
 const uid = () => Math.random().toString(36).slice(2, 11);
 const delay = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
 
-// 每个 Agent 的独立对话历史。key: agentId, value: messages[]
-const memory: Map<string, ChatMessage[]> = new Map();
-// 用户介入队列
-const interruptBuffer: string[] = [];
+// 每个频道内每个 Agent 的独立历史：sessionId -> (agentId -> messages[])
+const sessionMemory = new Map<string, Map<string, ChatMessage[]>>();
+// 每个频道的用户介入队列
+const sessionInterruptBuffers = new Map<string, string[]>();
+
+const getActiveSessionId = () => useSessionStore.getState().activeSessionId;
+const getMemoryForCurrentSession = () => {
+  const sessionId = getActiveSessionId();
+  if (!sessionMemory.has(sessionId)) {
+    sessionMemory.set(sessionId, new Map());
+  }
+  return sessionMemory.get(sessionId)!;
+};
+const getInterruptBuffer = () => {
+  const sessionId = getActiveSessionId();
+  if (!sessionInterruptBuffers.has(sessionId)) {
+    sessionInterruptBuffers.set(sessionId, []);
+  }
+  return sessionInterruptBuffers.get(sessionId)!;
+};
 
 /**
  * 校验 LLM 配置是否可用。不可用则抛出明确错误。
@@ -51,7 +67,7 @@ export function validateLLMConfig(): { ok: boolean; error?: string } {
 export const pushHumanInterrupt = (text: string) => {
   const cleaned = text.trim();
   if (!cleaned) return;
-  interruptBuffer.push(cleaned);
+  getInterruptBuffer().push(cleaned);
   const { pushEvent } = useSessionStore.getState();
   pushEvent({
     id: uid(),
@@ -87,8 +103,9 @@ const waitIfPaused = async () => {
  * 同时清空 sessionStore 中的持久化记忆。
  */
 const resetMemory = () => {
-  memory.clear();
-  interruptBuffer.length = 0;
+  const sessionId = getActiveSessionId();
+  sessionMemory.delete(sessionId);
+  getInterruptBuffer().length = 0;
   useSessionStore.getState().clearAgentMemory();
 };
 
@@ -97,7 +114,7 @@ const resetMemory = () => {
  * 页面刷新后可通过 loadMemoryFromStore 恢复。
  */
 const persistAgentMemory = (agentId: string) => {
-  const msgs = memory.get(agentId);
+  const msgs = getMemoryForCurrentSession().get(agentId);
   if (!msgs) return;
   useSessionStore.getState().setAgentMemory(
     agentId,
@@ -109,10 +126,13 @@ const persistAgentMemory = (agentId: string) => {
  * 从 sessionStore 恢复所有 Agent 的内存。
  */
 const loadMemoryFromStore = () => {
-  const stored = useSessionStore.getState().agentMemory;
+  const sessionId = getActiveSessionId();
+  const stored = useSessionStore.getState().agentMemory[sessionId] || {};
+  const memoryMap = new Map<string, ChatMessage[]>();
   for (const [agentId, msgs] of Object.entries(stored)) {
-    memory.set(agentId, msgs as ChatMessage[]);
+    memoryMap.set(agentId, msgs as ChatMessage[]);
   }
+  sessionMemory.set(sessionId, memoryMap);
 };
 
 // ── System prompt 构造：人设 + 立场 + 当前议题 + 议事规则 ──
@@ -280,8 +300,6 @@ const pushEvent = (e: DebateEvent) => {
 };
 
 export const DebateEngine = {
-  interruptBuffer,
-  memory,
   resetMemory,
   validateLLMConfig,
 
@@ -337,7 +355,7 @@ export const DebateEngine = {
           }\n\n请基于你的人设，先在 <thinking> 里深度思考（至少 200 字），再用 <answer> 给出 1-2 个发散观点（不超过 250 字）。不要重复前面 Agent 的视角。`,
         },
       ];
-      memory.set(agent.id, history);
+      getMemoryForCurrentSession().set(agent.id, history);
 
       setAgentStatus(agent.id, 'thinking');
       pushEvent({
@@ -461,7 +479,7 @@ export const DebateEngine = {
         await waitIfPaused();
         const agent = agents[i];
         const persona = resolvePersona(agent);
-        const history = memory.get(agent.id) || [];
+        const history = getMemoryForCurrentSession().get(agent.id) || [];
         // 当前 Agent 收到的 user 消息：上一轮他人发言 + 本轮辩论指令
         const recentSpeeches = useSessionStore
           .getState()
@@ -475,8 +493,8 @@ export const DebateEngine = {
           .join('\n\n');
 
         const interruptNote =
-          interruptBuffer.length
-            ? `\n\n人类主持人最新指令：${interruptBuffer[interruptBuffer.length - 1]}`
+          getInterruptBuffer().length
+            ? `\n\n人类主持人最新指令：${getInterruptBuffer()[getInterruptBuffer().length - 1]}`
             : '';
 
         const userMsg: ChatMessage = {

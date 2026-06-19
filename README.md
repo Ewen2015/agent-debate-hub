@@ -18,15 +18,28 @@
 - 📄 **统一结论报告** — TL;DR + 共识 / 分歧 / 论点明细 / 行动建议，支持 Markdown 导出
 - 💾 **本地持久化** — 议题、阶段、事件、报告均存入 `localStorage`，刷新不丢
 
-## 🎬 快速开始
+## 🎬 本地运行
+
+本项目使用 `pnpm` 作为包管理工具。首次运行请先安装依赖：
 
 ```bash
 pnpm install
-pnpm dev
-# → http://localhost:5173
 ```
 
-构建生产版本：
+启动开发服务器：
+
+```bash
+pnpm dev
+```
+
+打开浏览器访问：
+
+```text
+http://localhost:5173
+```
+
+如果你希望构建生产版本，可以使用：
+
 ```bash
 pnpm build
 pnpm preview

@@ -1,8 +1,10 @@
 import { useGatewayStore } from '@/store/staticStores';
 import type { LLMConfig } from '@/engine/LLMClient';
 
-const envValue = (key: 'VITE_LLM_API_KEY' | 'VITE_LLM_BASE_URL' | 'VITE_LLM_MODEL') =>
-  (import.meta.env?.[key] as string | undefined)?.trim();
+const envValue = (key: 'VITE_LLM_API_KEY' | 'VITE_LLM_BASE_URL' | 'VITE_LLM_MODEL') => {
+  const meta = import.meta as any;
+  return (meta.env?.[key] as string | undefined)?.trim();
+};
 
 const pick = (gatewayValue: string, envKey: 'VITE_LLM_API_KEY' | 'VITE_LLM_BASE_URL' | 'VITE_LLM_MODEL') =>
   gatewayValue.trim() || envValue(envKey) || '';

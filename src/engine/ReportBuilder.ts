@@ -74,16 +74,36 @@ const buildTemplateReport = (
     const supporters: string[] = [];
     const opposers: string[] = [];
     const evidence: Source[] = [];
+    const proTexts: string[] = [];
+    const conTexts: string[] = [];
+
     for (const sp of g.speeches) {
       const stance = stanceOf(sp.agentId);
-      if (stance === 'pro') supporters.push(personaName(sp.agentId));
-      else if (stance === 'con') opposers.push(personaName(sp.agentId));
-      else supporters.push(personaName(sp.agentId));
+      const name = personaName(sp.agentId);
+      if (stance === 'pro') {
+        supporters.push(name);
+        proTexts.push(sp.text);
+      } else if (stance === 'con') {
+        opposers.push(name);
+        conTexts.push(sp.text);
+      } else {
+        supporters.push(name);
+      }
       if (sp.sources) evidence.push(...sp.sources);
     }
+
+    const proExcerpt = proTexts[0]?.split(/。|！|？/)[0]?.trim();
+    const conExcerpt = conTexts[0]?.split(/。|！|？/)[0]?.trim();
+    const snippets: string[] = [];
+    if (proExcerpt) snippets.push(`支持方认为“${proExcerpt}”`);
+    if (conExcerpt) snippets.push(`反对方认为“${conExcerpt}”`);
+    const point = snippets.length
+      ? `${g.theme}：${snippets.join('，')}`
+      : `${g.theme}：该主题下出现了 ${g.speeches.length} 条不同观点。`;
+
     return {
       id: g.theme,
-      point: `${g.theme}：${g.speeches.length} 位 Agent 的核心观察`,
+      point,
       supporters: dedupStrings(supporters),
       opposers: dedupStrings(opposers),
       evidence: dedupSources(evidence),
@@ -96,29 +116,55 @@ const buildTemplateReport = (
 
   const consensus = arguments_
     .filter((a) => a.supporters.length >= thresholdSupport && a.opposers.length === 0)
-    .map((a) => a.point);
+    .map((a) => {
+      const detail = a.point.split('：').slice(1).join('：');
+      return `多数参与者在「${a.id}」上达成共识，核心观点为「${detail}」。`;
+    });
   const disagreements = arguments_
-    .filter((a) => a.opposers.length >= thresholdOppose)
-    .map((a) => `「${a.point}」仍被 ${a.opposers.length} 位 Agent 反对`);
+    .filter((a) => a.supporters.length > 0 && a.opposers.length > 0)
+    .map((a) => {
+      const detail = a.point.split('：').slice(1).join('：');
+      return `在「${a.id}」上，支持方与反对方围绕「${detail}」存在明显分歧。`;
+    });
 
   if (consensus.length === 0)
-    consensus.push('当前各论点均有反方声音，建议先收敛到 2-3 个最关键假设再决策。');
+    consensus.push('当前各论点尚未出现无异议的一致结论，建议先收敛到 2-3 个最关键假设再决策。');
   if (disagreements.length === 0 && debateSpeeches.length > 0)
-    disagreements.push('主要分歧已通过多轮辩论收敛，未出现强对抗。');
+    disagreements.push('目前分歧较少，主要观点已趋于收敛。');
+
+  const themes = groups.map((g) => g.theme).join('、');
+  const summary = `本次讨论围绕「${question}」展开，触及 ${themes} 等核心维度。支持方侧重于机会和价值，反对方更多强调风险与成本，讨论已开始形成可继续验证的假设。`;
+  const evaluation: string[] = [];
+  if (consensus.length > 0) {
+    evaluation.push(`讨论中已有 ${consensus.length} 条议题出现明显一致点，可作为下一步方案设计的基础。`);
+  }
+  if (disagreements.length > 0) {
+    evaluation.push(`仍存在 ${disagreements.length} 处核心分歧，建议优先针对这些观点进行量化验证。`);
+  } else {
+    evaluation.push('当前分歧较少，讨论已朝向共识方向收敛，适合进入落地评估阶段。');
+  }
+  if (debateSpeeches.length < 4) {
+    evaluation.push('当前讨论样本偏少，后续可补充更多事实与证据，以提升判断可靠性。');
+  }
+  if (groups.some((g) => g.theme === '风险与边界')) {
+    evaluation.push('反对方对“风险与边界”提出了明确担忧，需避免过早忽略潜在负面影响。');
+  }
 
   const actions = [
-    '在 2 周内发起一次 4 周有限实验，明确对照组与主要指标',
-    '组织一次跨职能风险评估会，覆盖合规 / 安全 / 业务三方',
-    '由数据导向的 Agent 主导产出 1 份"指标看板与决策阈值"',
-    '建立每周一次的小时级议事回顾会',
+    '在 1 周内整理出“主要共识点”和“核心分歧点”，形成一页决策备忘。',
+    '组织一次跨部门评审会，邀请支持方说明收益假设，邀请反对方说明风险边界。',
+    '针对已有证据最多的观点，补充 1-2 个可量化指标，明确验证标准。',
+    '将两处及以上关键分歧转化为可验证假设，并在下一次评审前完成验证方案。',
   ];
 
-  const tldr = `围绕「${question}」的多视角推演形成 ${consensus.length} 条共识与 ${disagreements.length} 处分歧。`;
+  const tldr = `围绕「${question}」，讨论形成 ${consensus.length} 条共识，同时存在 ${disagreements.length} 处分歧，需要围绕风险与收益进一步验证。`;
 
   return {
     sessionId,
     generatedAt: Date.now(),
     tldr,
+    summary,
+    evaluation,
     consensus,
     disagreements,
     actions,
@@ -144,7 +190,7 @@ const buildLLMReport = async (
     })
     .join('\n\n');
 
-  const sysPrompt = `你是资深议事总结者。请根据下方多 Agent 辩论记录，输出结构化 JSON。`;
+  const sysPrompt = `你是资深议事总结者，擅长将多方议论转化为可执行的报告。请根据下方多 Agent 辩论记录，输出结构化 JSON。`;
 
   const userPrompt = `议题：「${question}」
 
@@ -155,16 +201,21 @@ ${transcript}
 请输出严格 JSON（不要用 markdown 代码块包裹），结构：
 {
   "tldr": "1-2 句 TL;DR 总结",
+  "summary": "1-2 句对讨论内容与辩论观点的综合概括",
   "consensus": ["共识 1", "共识 2", ...],
-  "disagreements": ["分歧 1（含哪两位谁反对谁）", ...],
+  "disagreements": ["分歧 1（含支持方或反对方的观点）", ...],
+  "evaluation": ["简要评述 1", "简要评述 2"],
   "actions": ["行动建议 1", "行动建议 2", ...]
 }
 
 要求：
+- summary 要直接概括讨论中的核心观点和各方立场，不要只写结构性说明
 - consensus 仅写全场公认无争议的结论
-- disagreements 必须包含具体是谁反对什么
-- actions 可落地、含时间窗口
-- 用中文，简洁有力`;
+- disagreements 必须包含具体观点差异和立场对立，不要泛泛而谈
+- evaluation 需给出简明评述，指出讨论亮点和风险
+- actions 要可落地、含时间窗口，如“1 周内”“下周”“3 个工作日内”
+- 避免常见模板语句，尽量贴合具体发言内容
+- 只输出 JSON，且不要解释过程`;
 
   const messages: ChatMessage[] = [
     { role: 'system', content: sysPrompt },
@@ -180,6 +231,8 @@ ${transcript}
     return {
       ...base,
       tldr: parsed.tldr || base.tldr,
+      summary: typeof parsed.summary === 'string' && parsed.summary.trim() ? parsed.summary : base.summary,
+      evaluation: Array.isArray(parsed.evaluation) && parsed.evaluation.length ? parsed.evaluation : base.evaluation,
       consensus: Array.isArray(parsed.consensus) ? parsed.consensus : base.consensus,
       disagreements: Array.isArray(parsed.disagreements) ? parsed.disagreements : base.disagreements,
       actions: Array.isArray(parsed.actions) ? parsed.actions : base.actions,
@@ -218,6 +271,10 @@ export const ReportBuilder = {
     lines.push('');
     lines.push(`## TL;DR`);
     lines.push(report.tldr);
+    lines.push('');
+    lines.push(`## 总结与评述`);
+    lines.push(report.summary);
+    report.evaluation.forEach((line) => lines.push(`- ${line}`));
     lines.push('');
     lines.push(`## 共识点 (${report.consensus.length})`);
     report.consensus.forEach((c, i) => lines.push(`${i + 1}. ${c}`));

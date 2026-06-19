@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Settings2, FileText, Activity, Hash, ChevronRight } from 'lucide-react';
+import { Users, Settings2, FileText, Activity, Hash, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { useUIStore, useRosterStore, useGatewayStore } from '@/store/staticStores';
 import { useSessionStore } from '@/store/sessionStore';
 import { resolvePersona } from '@/engine/MockLLM';
@@ -11,6 +11,7 @@ import { RosterPanel } from '@/components/roster/RosterPanel';
 import { GatewayPanel } from '@/components/gateway/GatewayPanel';
 import { ReportPanel } from '@/components/report/ReportPanel';
 import { Drawer } from '@/components/shared/Drawer';
+import { Chip } from '@/components/shared/Chip';
 import type { RosterAgent, ProviderConfig } from '@/types';
 
 export default function App() {
@@ -33,10 +34,10 @@ export default function App() {
   }, [report, phase, setReportDrawer]);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen min-h-screen flex flex-col overflow-hidden">
       <TopBar />
 
-      <main className="flex-1 max-w-[1540px] w-full mx-auto px-4 md:px-6 pb-8 grid grid-cols-1 lg:grid-cols-[236px_minmax(0,1fr)] xl:grid-cols-[250px_minmax(0,1fr)_320px] gap-4">
+      <main className="flex-1 min-h-0 overflow-hidden max-w-[1540px] w-full mx-auto px-4 md:px-6 grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-3">
         <WorkspaceSidebar
           reportReady={!!report}
           onRoster={() => setRosterDrawer(true)}
@@ -44,42 +45,18 @@ export default function App() {
           onReport={() => setReportDrawer(true)}
         />
 
-        <section className="min-w-0 flex flex-col gap-4">
-          <StageControl />
-          <QuestionWorkbench />
+        <section className="min-w-0 h-full flex flex-col gap-3 overflow-hidden">
+          <div className="flex flex-col gap-3">
+            <div className="sticky top-3 z-10">
+              <StageControl />
+            </div>
+            <div className="sticky top-[92px] z-10">
+              <QuestionWorkbench />
+            </div>
+          </div>
           <DiscussionChannel />
         </section>
-
-        <aside className="hidden xl:flex flex-col gap-4 min-w-0">
-          <SidePanel
-            icon={<Users size={14} />}
-            title="Members"
-            subtitle="Agent 团"
-            onOpen={() => setRosterDrawer(true)}
-          >
-            <RosterMini />
-          </SidePanel>
-          <SidePanel
-            icon={<Settings2 size={14} />}
-            title="Gateway"
-            subtitle="Provider"
-            onOpen={() => setGatewayDrawer(true)}
-          >
-            <GatewayMini />
-          </SidePanel>
-          <SidePanel
-            icon={<FileText size={14} />}
-            title="Report"
-            subtitle={report ? '已生成' : '待生成'}
-            onOpen={() => setReportDrawer(true)}
-            highlight={!!report}
-          >
-            <ReportMini />
-          </SidePanel>
-        </aside>
       </main>
-
-      <Footer />
 
       <Drawer
         open={rosterDrawerOpen}
@@ -119,22 +96,22 @@ export default function App() {
 
 function TopBar() {
   return (
-    <header className="px-4 md:px-6 pt-4 pb-3">
-      <div className="max-w-[1540px] mx-auto flex items-center gap-4">
+    <header className="px-4 md:px-6 py-3">
+      <div className="max-w-[1540px] mx-auto flex items-center gap-2.5">
         <motion.div
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex items-center gap-2.5"
+          className="flex items-center gap-2"
         >
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-gold-300 to-gold-500 flex items-center justify-center">
-            <Activity size={18} className="text-[var(--text-primary)]" />
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gold-300 to-gold-500 flex items-center justify-center">
+            <Activity size={14} className="text-[var(--text-primary)]" />
           </div>
           <div>
-            <div className="font-display text-lg text-[var(--text-primary)] leading-none">
+            <div className="font-display text-sm text-[var(--text-primary)] leading-none">
               Group Debate Hub
             </div>
-            <div className="text-[10px] tracking-widest2 uppercase text-[var(--text-primary)]/40 mt-1">
+            <div className="text-[9px] tracking-widest2 uppercase text-[var(--text-primary)]/40 mt-1">
               Workspace · v0.1
             </div>
           </div>
@@ -145,21 +122,10 @@ function TopBar() {
           arena ready
         </div>
       </div>
-      <div className="max-w-[1540px] mx-auto mt-3">
+      <div className="max-w-[1540px] mx-auto mt-1.5">
         <div className="divider-x" />
       </div>
     </header>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="px-4 md:px-6 py-4 mt-2">
-      <div className="max-w-[1540px] mx-auto flex items-center justify-between text-[10px] tracking-widish uppercase text-[var(--text-primary)]/30">
-        <span>Group Debate Agent Hub · 本地运行 · 状态保存在浏览器</span>
-        <span>Mock 模式 · {new Date().getFullYear()}</span>
-      </div>
-    </footer>
   );
 }
 
@@ -184,8 +150,14 @@ function WorkspaceSidebar({
   onReport: () => void;
 }) {
   const session = useSessionStore((s) => s.session);
+  const activeSessionId = useSessionStore((s) => s.activeSessionId);
+  const sessions = useSessionStore((s) => s.sessions);
+  const createChannel = useSessionStore((s) => s.createChannel);
+  const setActiveSession = useSessionStore((s) => s.setActiveSession);
+  const deleteChannel = useSessionStore((s) => s.deleteChannel);
+  const report = useSessionStore((s) => s.report);
   const agents = useRosterStore((s) => s.agents);
-  const channelName = channelNameFromQuestion(session.question);
+  const channelName = session.title || 'new discussion';
   const activeAgents = agents.filter((agent) => agent.status !== 'idle').length;
   const phaseLabel =
     session.phase === 'brainstorm'
@@ -197,51 +169,186 @@ function WorkspaceSidebar({
       : 'Idle';
 
   return (
-    <aside className="hidden lg:flex lg:sticky lg:top-4 lg:h-[calc(100vh-104px)] min-h-[620px]">
-      <div className="glass-strong rounded-lg w-full p-3 flex flex-col overflow-hidden">
-        <div className="px-2 pb-3 border-b border-[var(--border-soft)]">
-          <div className="font-display text-base text-[var(--text-primary)]">Debate Hub</div>
-          <div className="mt-1 text-[10px] uppercase tracking-widest2 text-[var(--text-muted)]">
-            Workspace
+    <aside className="hidden lg:flex lg:sticky lg:top-3 lg:h-full min-h-[620px]">
+      <div className="glass-strong rounded-2xl w-full p-3 flex flex-col overflow-hidden gap-3">
+        <div className="rounded-2xl border border-[var(--border-soft)] bg-[var(--bg-card)] p-3">
+          <div className="flex items-center gap-1.5 mb-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[var(--bg-card-strong)] text-[var(--accent-gold)]">
+              <Hash size={18} />
+            </div>
+            <div>
+              <div className="font-display text-sm text-[var(--text-primary)]">Debate Hub</div>
+              <div className="text-[9px] uppercase tracking-widest2 text-[var(--text-muted)] mt-0.5">
+                全局概览
+              </div>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div className="rounded-2xl bg-[var(--bg-soft)] p-3 border border-[var(--border-soft)]">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="text-[9px] uppercase tracking-widish text-[var(--text-muted)]">频道</div>
+                  <div className="mt-1.5 flex items-center gap-2 text-[12px] font-medium text-[var(--text-primary)]">
+                    <Hash size={16} />
+                    <span className="truncate">{channelName}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={createChannel}
+                  className="inline-flex h-8 items-center gap-2 rounded-xl bg-[var(--bg-card)] px-3 text-[11px] text-[var(--text-primary)] border border-[var(--border-soft)] hover:bg-[var(--bg-card-strong)] transition-colors"
+                >
+                  <Plus size={14} />
+                  新建
+                </button>
+              </div>
+            </div>
+            <div className="rounded-2xl bg-[var(--bg-soft)] p-3 border border-[var(--border-soft)]">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] uppercase tracking-widish text-[var(--text-muted)]">状态</span>
+                <Chip tone={session.phase === 'idle' ? 'mute' : 'cyan'} size="sm">
+                  {phaseLabel}
+                </Chip>
+              </div>
+              <div className="mt-2 text-[11px] text-[var(--text-primary)]/80">
+                {session.question || '未设置讨论主题'}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-[var(--border-soft)] bg-[var(--bg-card)] p-3">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <span className="text-[10px] uppercase tracking-widish text-[var(--text-muted)]">全部频道</span>
+                <span className="text-[10px] text-[var(--text-primary)]/50">{Object.keys(sessions).length} 个</span>
+              </div>
+              <div className="space-y-2">
+                {Object.values(sessions).map((item) => {
+                  const name = item.title || 'new discussion';
+                  const isActive = item.id === activeSessionId;
+                  return (
+                    <div
+                      key={item.id}
+                      className={`flex items-center justify-between gap-2 rounded-xl border p-2 ${
+                        isActive ? 'border-[var(--accent-gold)] bg-[var(--bg-soft)]' : 'border-[var(--border-soft)] bg-[var(--bg-card)]'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setActiveSession(item.id)}
+                        className="min-w-0 text-left"
+                      >
+                        <div className={`truncate text-[12px] ${isActive ? 'font-medium text-[var(--text-primary)]' : 'text-[var(--text-primary)]/80'}`}>
+                          {name}
+                        </div>
+                        <div className="text-[10px] text-[var(--text-muted)]/80 truncate">
+                          {item.question || '新频道'}
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteChannel(item.id)}
+                        className="text-[var(--text-muted)] hover:text-[var(--accent-rose)]"
+                        aria-label={`删除频道 ${name}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="mt-4">
-          <div className="px-2 mb-2 text-[10px] uppercase tracking-widest2 text-[var(--text-muted)]">
-            Channels
+        <div className="space-y-4 overflow-auto pr-1">
+          <div className="rounded-2xl border border-[var(--border-soft)] bg-[var(--bg-card)] p-4">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2 text-[var(--text-primary)]">
+                <Users size={16} />
+                <div>
+                  <div className="font-display text-sm">成员</div>
+                  <div className="text-[10px] text-[var(--text-muted)]">Agent 团</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onRoster}
+                className="text-[10px] uppercase tracking-widish text-[var(--accent-violet)]"
+              >
+                管理
+              </button>
+            </div>
+            <ul className="space-y-2">
+              {agents.slice(0, 6).map((a) => {
+                const persona = resolvePersona(a);
+                return (
+                  <li key={a.id} className="flex items-center gap-2 text-[12px]">
+                    <div
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-display text-[var(--text-primary)]"
+                      style={{ background: `linear-gradient(135deg, ${persona.gradient[0]}, ${persona.gradient[1]})` }}
+                    >
+                      {persona.emoji}
+                    </div>
+                    <div className="min-w-0 truncate text-[var(--text-primary)]/85">{persona.name}</div>
+                    <span className="rounded-full bg-[var(--bg-soft)] px-2 py-0.5 text-[10px] text-[var(--text-muted)]">
+                      {persona.stance === 'pro' ? '支持' : persona.stance === 'con' ? '反对' : '中立'}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
-          <div
-            className="w-full rounded-md bg-[var(--accent-violet)]/16 text-[var(--text-primary)] border border-[var(--accent-violet)]/25 px-2.5 py-2 flex items-center gap-2"
-          >
-            <Hash size={15} className="text-[var(--accent-violet)] flex-shrink-0" />
-            <span className="text-sm truncate text-left">{channelName}</span>
-          </div>
-        </div>
 
-        <div className="mt-5">
-          <div className="px-2 mb-2 text-[10px] uppercase tracking-widest2 text-[var(--text-muted)]">
-            Details
+          <div className="rounded-2xl border border-[var(--border-soft)] bg-[var(--bg-card)] p-4">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2 text-[var(--text-primary)]">
+                <Settings2 size={16} />
+                <div>
+                  <div className="font-display text-sm">Gateway</div>
+                  <div className="text-[10px] text-[var(--text-muted)]">模型提供</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onGateway}
+                className="text-[10px] uppercase tracking-widish text-[var(--accent-violet)]"
+              >
+                配置
+              </button>
+            </div>
+            <div className="text-[12px] text-[var(--text-primary)]/80">
+              <div className="font-medium">{useGatewayStore.getState().providers.find((p) => p.id === useGatewayStore.getState().activeProviderId)?.label || '未配置'}</div>
+              <div className="text-[10px] text-[var(--text-muted)] mt-1 truncate">
+                {useGatewayStore.getState().providers.find((p) => p.id === useGatewayStore.getState().activeProviderId)?.baseUrl || '本地 mock'}
+              </div>
+            </div>
           </div>
-          <SidebarAction icon={<Users size={14} />} label="Members" onClick={onRoster} />
-          <SidebarAction icon={<Settings2 size={14} />} label="Gateway" onClick={onGateway} />
-          <SidebarAction
-            icon={<FileText size={14} />}
-            label={reportReady ? 'Report ready' : 'Report'}
-            onClick={onReport}
-            active={reportReady}
-          />
-        </div>
 
-        <div className="mt-auto rounded-md border border-[var(--border-soft)] bg-[var(--bg-card)] p-3">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] uppercase tracking-widish text-[var(--text-muted)]">{phaseLabel}</span>
-            <span className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
-              <span className={`h-1.5 w-1.5 rounded-full ${activeAgents ? 'bg-[var(--accent-cyan)]' : 'bg-[var(--text-muted)]/40'}`} />
-              {activeAgents}/{agents.length}
-            </span>
-          </div>
-          <div className="mt-2 text-[12px] leading-snug text-[var(--text-soft)] line-clamp-3">
-            {session.question || 'Untitled discussion'}
+          <div className="rounded-2xl border border-[var(--border-soft)] bg-[var(--bg-card)] p-4">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2 text-[var(--text-primary)]">
+                <FileText size={16} />
+                <div>
+                  <div className="font-display text-sm">Report</div>
+                  <div className="text-[10px] text-[var(--text-muted)]">结果摘要</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onReport}
+                className="text-[10px] uppercase tracking-widish text-[var(--accent-violet)]"
+              >
+                查看
+              </button>
+            </div>
+            {report ? (
+              <div className="space-y-2 text-[12px] text-[var(--text-primary)]/80">
+                <div><span className="text-[var(--text-primary)]/40">共识：</span>{report.consensus.length} 条</div>
+                <div><span className="text-[var(--text-primary)]/40">分歧：</span>{report.disagreements.length} 处</div>
+                <div><span className="text-[var(--text-primary)]/40">论点：</span>{report.arguments.length} 个</div>
+              </div>
+            ) : (
+              <div className="text-[11px] text-[var(--text-primary)]/50">完成阶段后点击指挥台生成报告。</div>
+            )}
           </div>
         </div>
       </div>
@@ -292,8 +399,8 @@ function SidePanel({
   highlight?: boolean;
 }) {
   return (
-    <div className={`glass rounded-lg p-4 ${highlight ? 'border-[var(--accent-gold)]/35' : ''}`}>
-      <div className="flex items-center gap-2 mb-3">
+    <div className={`glass rounded-lg p-3 ${highlight ? 'border-[var(--accent-gold)]/35' : ''}`}>
+      <div className="flex items-center gap-2 mb-2.5">
         <span className="text-[var(--accent-gold)]/80">{icon}</span>
         <span className="font-display text-sm text-[var(--text-primary)]">{title}</span>
         <div className="flex-1" />

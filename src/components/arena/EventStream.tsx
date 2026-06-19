@@ -77,7 +77,7 @@ function EventRow({ e }: { e: DebateEvent }) {
           <div
             className={`mt-0.5 ${
               isThink
-                ? 'font-mono text-[11.5px] text-[var(--accent-gold)]/80 italic border-l-2 border-[var(--accent-gold)]/30 pl-2'
+                ? 'font-mono text-[11.5px] text-[var(--accent-gold)]/80 border-l-2 border-[var(--accent-gold)]/30 pl-2'
                 : isSearch
                 ? 'text-[var(--accent-cyan)]/85'
                 : 'text-[var(--text-primary)]/75'

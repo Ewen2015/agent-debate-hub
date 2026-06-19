@@ -16,6 +16,8 @@ export function ReportPanel() {
 
   const [expandedArg, setExpandedArg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const summary = report?.summary ?? '';
+  const evaluation = report?.evaluation ?? [];
 
   if (!report) {
     return (
@@ -23,7 +25,7 @@ export function ReportPanel() {
         <div className="w-12 h-12 rounded-full border border-cream-50/15 flex items-center justify-center mb-3">
           <FileText size={20} className="text-[var(--text-primary)]/30" />
         </div>
-        <div className="font-display text-base text-[var(--text-primary)]/80">尚未生成报告</div>
+        <div className="font-display text-[14px] text-[var(--text-primary)]/80">尚未生成报告</div>
         <div className="text-[11px] text-[var(--text-primary)]/40 mt-1.5 tracking-widish max-w-[260px]">
           完成至少一轮 Brainstorm 或 Debate 后，点击指挥台的「生成报告」。
         </div>
@@ -31,14 +33,39 @@ export function ReportPanel() {
     );
   }
 
+  const copyToClipboard = async (text: string) => {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        // fallback below
+      }
+    }
+
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'absolute';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      textarea.setSelectionRange(0, textarea.value.length);
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      return successful;
+    } catch {
+      return false;
+    }
+  };
+
   const handleCopy = async () => {
     const md = ReportBuilder.toMarkdown(report, session.question);
-    try {
-      await navigator.clipboard.writeText(md);
+    const success = await copyToClipboard(md);
+    if (success) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // ignore
     }
   };
 
@@ -57,7 +84,7 @@ export function ReportPanel() {
     <div className="space-y-5">
       <header className="flex items-center gap-2">
         <FileText size={16} className="text-[var(--accent-gold)]" />
-        <span className="font-display text-lg text-[var(--text-primary)]">统一结论报告</span>
+        <span className="font-display text-[14px] text-[var(--text-primary)]">统一结论报告</span>
       </header>
 
       <div className="flex items-center gap-2 text-[10px] tracking-widish uppercase text-[var(--text-primary)]/40">
@@ -68,17 +95,28 @@ export function ReportPanel() {
       <div className="divider-x" />
 
       <Section title="TL;DR" index="01">
-        <p className="text-[13.5px] leading-relaxed text-[var(--text-primary)]/90 font-serif italic text-balance">
+        <p className="text-[12px] leading-relaxed text-[var(--text-primary)]/90 text-balance">
           {report.tldr}
         </p>
       </Section>
 
-      <Section title="共识点" index="02" count={report.consensus.length}>
+      <Section title="总结与评述" index="02">
+        <div className="space-y-2 text-[12px] leading-relaxed text-[var(--text-primary)]/85">
+          <p>{summary}</p>
+          {evaluation.map((line, idx) => (
+            <p key={idx} className="text-[12.5px] text-[var(--text-primary)]/80">
+              • {line}
+            </p>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="共识点" index="03" count={report.consensus.length}>
         <ul className="space-y-1.5">
           {report.consensus.map((c, i) => (
             <li
               key={i}
-              className="text-[13px] leading-relaxed text-[var(--text-primary)]/85 pl-3 border-l-2 border-[var(--accent-gold)]/40"
+              className="text-[12px] leading-relaxed text-[var(--text-primary)]/85 pl-3 border-l-2 border-[var(--accent-gold)]/40"
             >
               {c}
             </li>
@@ -91,7 +129,7 @@ export function ReportPanel() {
           {report.disagreements.map((d, i) => (
             <li
               key={i}
-              className="text-[13px] leading-relaxed text-[var(--text-primary)]/85 pl-3 border-l-2 border-[var(--accent-rose)]/40"
+              className="text-[12px] leading-relaxed text-[var(--text-primary)]/85 pl-3 border-l-2 border-[var(--accent-rose)]/40"
             >
               {d}
             </li>
@@ -110,7 +148,7 @@ export function ReportPanel() {
                   className="w-full px-3 py-2 flex items-center gap-2 text-left"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-display text-[13px] text-[var(--text-primary)] truncate">
+                    <div className="font-display text-[14px] text-[var(--text-primary)] truncate">
                       {a.point}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
@@ -186,7 +224,7 @@ export function ReportPanel() {
           {report.actions.map((a, i) => (
             <li
               key={i}
-              className="text-[13px] leading-relaxed text-[var(--text-primary)]/85 marker:text-[var(--accent-gold)] marker:font-mono"
+              className="text-[12px] leading-relaxed text-[var(--text-primary)]/85 marker:text-[var(--accent-gold)] marker:font-mono"
             >
               {a}
             </li>
@@ -233,7 +271,7 @@ function Section({
         <span className="font-mono text-[10px] text-[var(--accent-gold)]/70 tracking-widish">
           {index}
         </span>
-        <span className="font-display text-sm text-[var(--text-primary)]">{title}</span>
+        <span className="font-display text-[14px] text-[var(--text-primary)]">{title}</span>
         {count !== undefined && (
           <span className="text-[10px] text-[var(--text-primary)]/40 ml-1">({count})</span>
         )}
