@@ -5,7 +5,10 @@ import { PERSONAS } from '@/data/personas';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-const DEFAULT_PERSONA_IDS = ['idealist', 'engineer', 'skeptic'];
+const envStr = (key: string) =>
+  ((import.meta as any).env?.[key] as string | undefined)?.trim() || '';
+
+const DEFAULT_PERSONA_IDS = ['idealist', 'skeptic'];
 
 const buildDefaultRoster = (): RosterAgent[] =>
   DEFAULT_PERSONA_IDS.map((pid) => ({
@@ -53,10 +56,14 @@ interface RosterState {
 interface GatewayState {
   providers: ProviderConfig[];
   activeProviderId: string;
+  /** 全局搜索引擎 API Key（OpenAI 兼容 Provider 的 function tool 搜索使用） */
+  tavilyKey: string;
+  serperKey: string;
   addProvider: (p: Partial<ProviderConfig>) => string;
   updateProvider: (id: string, patch: Partial<ProviderConfig>) => void;
   removeProvider: (id: string) => void;
   setActive: (id: string) => void;
+  setSearchKey: (key: 'tavilyKey' | 'serperKey', value: string) => void;
   reset: () => void;
 }
 
@@ -126,7 +133,24 @@ export const useRosterStore = create<RosterState>()(
       },
       reset: () => set({ agents: buildDefaultRoster() }),
     }),
-    { name: 'gd-hub:roster:v1' },
+    {
+      name: 'gd-hub:roster:v1',
+      version: 2,
+      migrate: (persisted: any, version: number) => {
+        if (version < 2 && persisted?.agents && Array.isArray(persisted.agents)) {
+          const agents = persisted.agents as RosterAgent[];
+          const isOldDefault =
+            agents.length === 3 &&
+            agents[0]?.personaId === 'idealist' &&
+            agents[1]?.personaId === 'engineer' &&
+            agents[2]?.personaId === 'skeptic';
+          if (isOldDefault) {
+            return { ...persisted, agents: agents.slice(0, 2) };
+          }
+        }
+        return persisted;
+      },
+    },
   ),
 );
 
@@ -135,6 +159,8 @@ export const useGatewayStore = create<GatewayState>()(
     (set, get) => ({
       providers: [DEFAULT_PROVIDER],
       activeProviderId: 'unconfigured',
+      tavilyKey: envStr('VITE_TAVILY_API_KEY'),
+      serperKey: envStr('VITE_SERPER_API_KEY'),
       addProvider: (p) => {
         const id = uid();
         const newOne: ProviderConfig = {
@@ -165,11 +191,18 @@ export const useGatewayStore = create<GatewayState>()(
         }
       },
       setActive: (id) => set({ activeProviderId: id }),
-      reset: () => set({ providers: [DEFAULT_PROVIDER], activeProviderId: 'unconfigured' }),
+      setSearchKey: (key, value) => set({ [key]: value } as Pick<GatewayState, typeof key>),
+      reset: () =>
+        set({
+          providers: [DEFAULT_PROVIDER],
+          activeProviderId: 'unconfigured',
+          tavilyKey: envStr('VITE_TAVILY_API_KEY'),
+          serperKey: envStr('VITE_SERPER_API_KEY'),
+        }),
     }),
     {
       name: 'gd-hub:gateway:v1',
-      version: 2,
+      version: 3,
       migrate: (persisted: any, version: number) => {
         // v1 → v2: 清除旧的 mock provider，替换为新的 unconfigured 默认值
         if (version < 2 && persisted?.providers) {
@@ -178,10 +211,18 @@ export const useGatewayStore = create<GatewayState>()(
               ? { ...DEFAULT_PROVIDER }
               : p,
           );
-          return {
+          persisted = {
             ...persisted,
             providers: cleaned,
             activeProviderId: cleaned[0]?.id || 'unconfigured',
+          };
+        }
+        // v2 → v3: 补充搜索引擎 Key 默认值
+        if (version < 3) {
+          persisted = {
+            ...persisted,
+            tavilyKey: envStr('VITE_TAVILY_API_KEY'),
+            serperKey: envStr('VITE_SERPER_API_KEY'),
           };
         }
         return persisted;

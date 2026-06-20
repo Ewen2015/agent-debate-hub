@@ -30,6 +30,9 @@ export function GatewayPanel() {
   const removeProvider = useGatewayStore((s) => s.removeProvider);
   const setActive = useGatewayStore((s) => s.setActive);
   const reset = useGatewayStore((s) => s.reset);
+  const tavilyKey = useGatewayStore((s) => s.tavilyKey);
+  const serperKey = useGatewayStore((s) => s.serperKey);
+  const setSearchKey = useGatewayStore((s) => s.setSearchKey);
 
   const [showAdd, setShowAdd] = useState(false);
   const [newTpl, setNewTpl] = useState<ProviderTemplate>('openai');
@@ -49,7 +52,7 @@ export function GatewayPanel() {
   return (
     <div className="flex flex-col gap-4">
       <div className="text-[11px] text-[var(--text-soft)] leading-relaxed">
-        配置 LLM Provider 以启用真实辩论。<strong className="text-[var(--accent-gold)]">必须填入 API Key、Base URL、Model</strong> 才能开始。推荐使用 Anthropic（原生联网）或火山引擎 Ark Coding Plan（原生联网 + thinking）。也可通过 .env.local 配置 VITE_LLM_API_KEY / VITE_LLM_BASE_URL / VITE_LLM_MODEL。
+        配置 LLM Provider 以启用真实辩论。<strong className="text-[var(--accent-gold)]">必须填入 API Key、Base URL、Model</strong> 才能开始。推荐使用 Anthropic（原生联网搜索）。火山引擎 Ark Coding Plan 支持 thinking + function calling 搜索（需配置 Tavily/Serper Key）。也可通过 .env.local 配置 VITE_LLM_API_KEY / VITE_LLM_BASE_URL / VITE_LLM_MODEL。
       </div>
 
       <div className="divider-x" />
@@ -111,6 +114,43 @@ export function GatewayPanel() {
           </div>
         </div>
       )}
+
+      <div className="divider-x" />
+
+      {/* 搜索引擎配置 */}
+      <div className="glass rounded-xl p-3 space-y-2.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] tracking-widest2 uppercase text-[var(--text-muted)] font-semibold">
+            联网搜索引擎
+          </span>
+          {(tavilyKey || serperKey) ? (
+            <Chip tone="cyan" size="sm">已配置</Chip>
+          ) : (
+            <Chip tone="rose" size="sm">未配置</Chip>
+          )}
+        </div>
+        <div className="text-[11px] text-[var(--text-soft)] leading-relaxed">
+          Anthropic 使用原生联网，无需配置。Ark Coding Plan / 其他 OpenAI 兼容 Provider 需配置其一才能联网检索。
+        </div>
+        <Field label="Tavily API Key">
+          <input
+            type="password"
+            value={tavilyKey}
+            onChange={(e) => setSearchKey('tavilyKey', e.target.value)}
+            placeholder="tvly-..."
+            className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)]"
+          />
+        </Field>
+        <Field label="Serper API Key">
+          <input
+            type="password"
+            value={serperKey}
+            onChange={(e) => setSearchKey('serperKey', e.target.value)}
+            placeholder="serper-..."
+            className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)]"
+          />
+        </Field>
+      </div>
 
       <div className="divider-x" />
 
@@ -347,7 +387,7 @@ function ProviderCard({
               onChange={(e) => onUpdate({ enableSearch: e.target.checked })}
               className="accent-[var(--accent-gold)]"
             />
-            允许该模型启用网络搜索（Anthropic/Ark 原生联网，其他 Provider 需配置 Tavily/Serper Key）
+            允许该模型启用网络搜索（Anthropic 原生联网；Ark/其他 Provider 需配置 Tavily/Serper Key）
           </label>
           <div className="flex items-center gap-2 pt-1 flex-wrap">
             <Button

@@ -2,13 +2,13 @@
  * 真实 LLM 客户端
  * 支持：
  *  - OpenAI Chat Completions（OpenAI / DeepSeek / Moonshot / 自定义）
- *  - Ark Coding Plan（火山引擎）— 原生联网 + thinking
+ *  - Ark Coding Plan（火山引擎）— thinking + function calling 搜索
  *  - Anthropic Messages（Claude 系列）— 原生 web_search + thinking
  *
  * 联网策略：
  *  - Anthropic：使用原生 web_search_20250305 服务端工具，模型自主搜索
- *  - Ark：使用 enable_search 原生联网
- *  - 其他 OpenAI 兼容：声明 web_search function tool，由 chatWithTools 执行
+ *  - Ark / 其他 OpenAI 兼容：声明 web_search function tool，由 chatWithTools 执行外部搜索
+ *    （Ark Coding Plan Key 不支持 Responses API，但 Chat API 支持 Function Calling）
  *
  * 关键原则：
  *  - 每个 Agent 独立维护 message[] 历史，每次发言都把全部历史带回服务端。
@@ -183,15 +183,14 @@ async function chatOpenAI(
 
   const isArk = kind === 'ark-coding';
 
-  // Ark Coding Plan：启用 thinking + 原生联网
+  // Ark Coding Plan：启用 thinking
   if (isArk) {
     body.thinking = { type: 'enabled' };
-    if (cfg.enableSearch) {
-      // Ark 原生联网：模型自主搜索，不需要 function tool
-      body.enable_search = true;
-    }
-  } else if (cfg.enableSearch) {
-    // 其他 OpenAI 兼容：声明 function tool，由 chatWithTools 执行
+  }
+
+  // 联网搜索：通过 function tool 声明，由 chatWithTools 执行外部搜索
+  // （Ark Coding Plan Key 不支持 Responses API，但 Chat API 支持 Function Calling）
+  if (cfg.enableSearch) {
     body.tools = [WEB_SEARCH_TOOL_OPENAI];
     body.tool_choice = 'auto';
   }
@@ -237,39 +236,11 @@ async function chatOpenAI(
     }))
     .filter((x: any) => x.name);
 
-  // Ark 原生联网的搜索结果可能在 search_results 或 citations 字段
-  const sources: { title: string; url: string; domain: string; snippet?: string }[] = [];
-  if (isArk && cfg.enableSearch) {
-    const searchResults = choice.search_results || data.search_results || [];
-    for (const s of searchResults) {
-      if (s.url || s.link) {
-        sources.push({
-          title: s.title || s.name || '',
-          url: s.url || s.link || '',
-          domain: domainOf(s.url || s.link || ''),
-          snippet: s.content?.slice(0, 240) || s.snippet || '',
-        });
-      }
-    }
-    // Ark 也可能在 message 中返回 citations
-    const citations = msg.citations || [];
-    for (const c of citations) {
-      if (c.url || c.link) {
-        sources.push({
-          title: c.title || c.name || '',
-          url: c.url || c.link || '',
-          domain: domainOf(c.url || c.link || ''),
-          snippet: c.content?.slice(0, 240) || '',
-        });
-      }
-    }
-  }
-
+  // Ark 联网搜索由 chatArkResponses 处理，此处仅处理 OpenAI 兼容 function tool
   return {
     content: msg.content || '',
     reasoning,
     toolCalls: toolCalls?.length ? toolCalls : undefined,
-    sources: sources.length ? sources : undefined,
     usage: data.usage
       ? {
           promptTokens: data.usage.prompt_tokens,

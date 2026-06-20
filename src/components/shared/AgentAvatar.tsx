@@ -13,18 +13,18 @@ interface AgentAvatarProps {
 
 const STATUS_COLOR_LIGHT: Record<AgentStatus, string> = {
   idle: 'rgba(20, 24, 36, 0.18)',
-  thinking: '#B8801E',
-  searching: '#2BA88E',
-  speaking: '#7565D6',
-  paused: '#C84A4D',
+  thinking: '#7A6A45',
+  searching: '#2C5F5D',
+  speaking: '#3E4A6B',
+  paused: '#9F4A3C',
 };
 
 const STATUS_COLOR_DARK: Record<AgentStatus, string> = {
   idle: 'rgba(255,255,255,0.18)',
-  thinking: '#E8B14C',
-  searching: '#5FE0C7',
-  speaking: '#9A8CFF',
-  paused: '#F47174',
+  thinking: '#B8A878',
+  searching: '#6FB3A8',
+  speaking: '#8B95B8',
+  paused: '#D08877',
 };
 
 export function AgentAvatar({
@@ -39,7 +39,7 @@ export function AgentAvatar({
   const theme = useThemeStore((s) => s.theme);
   const map = theme === 'dark' ? STATUS_COLOR_DARK : STATUS_COLOR_LIGHT;
   const ringColor = map[agent.status as AgentStatus] || map.idle;
-  const activeColor = theme === 'dark' ? '#E8B14C' : '#B8801E';
+  const activeColor = theme === 'dark' ? '#B8A878' : '#7A6A45';
   const overlayLight = theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.35)';
 
   return (

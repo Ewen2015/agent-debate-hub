@@ -26,14 +26,15 @@ type Tone = 'gold' | 'cyan' | 'rose' | 'violet' | 'neutral' | 'mute';
 
 type TimelineItem =
   | { id: string; ts: number; kind: 'speech'; speech: Speech }
-  | { id: string; ts: number; kind: 'event'; event: DebateEvent };
+  | { id: string; ts: number; kind: 'event'; event: DebateEvent }
+  | { id: string; ts: number; kind: 'eventBundle'; events: DebateEvent[] };
 
 const LONG_TEXT = 180;
 
 const STANCE_META: Record<AgentStance, { label: string; tone: Tone; color: string }> = {
-  pro: { label: '支持', tone: 'gold', color: '#E8B14C' },
-  con: { label: '反对', tone: 'rose', color: '#F47174' },
-  neutral: { label: '中立', tone: 'cyan', color: '#5FE0C7' },
+  pro: { label: '支持', tone: 'gold', color: '#B8A878' },
+  con: { label: '反对', tone: 'rose', color: '#D08877' },
+  neutral: { label: '中立', tone: 'cyan', color: '#6FB3A8' },
 };
 
 const formatTime = (ts: number) => {
@@ -66,6 +67,40 @@ const eventMeta = (type: DebateEvent['type']): { icon: ReactNode; label: string;
       return { icon: <Sparkles size={13} />, label: '系统', tone: 'mute' };
   }
 };
+
+const isMergeableThoughtEvent = (e: DebateEvent) =>
+  e.type === 'think' || e.type === 'search' || e.type === 'cite';
+
+function mergeThoughtEvents(items: TimelineItem[]): TimelineItem[] {
+  const out: TimelineItem[] = [];
+  const within = (a: number, b: number) => Math.abs(a - b) <= 15000;
+
+  for (const item of items) {
+    if (item.kind !== 'event' || !isMergeableThoughtEvent(item.event)) {
+      out.push(item);
+      continue;
+    }
+
+    const last = out[out.length - 1];
+    if (
+      last?.kind === 'eventBundle' &&
+      last.events[0]?.agentId === item.event.agentId &&
+      within(last.events[last.events.length - 1]?.ts ?? last.ts, item.event.ts)
+    ) {
+      last.events.push(item.event);
+      continue;
+    }
+
+    out.push({
+      id: `bundle-${item.event.id}`,
+      ts: item.event.ts,
+      kind: 'eventBundle',
+      events: [item.event],
+    });
+  }
+
+  return out;
+}
 
 function findAgent(agents: RosterAgent[], id: string) {
   return agents.find((agent) => agent.id === id);
@@ -133,13 +168,142 @@ function SourceList({ sources }: { sources: Source[] }) {
             {source.domain}
           </span>
           {source.snippet && (
-            <div className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
+            <div className="mt-1 text-[12px] leading-[20px] text-[var(--text-muted)]">
               {source.snippet}
             </div>
           )}
         </li>
       ))}
     </ul>
+  );
+}
+
+function References({ sources }: { sources: Source[] }) {
+  return (
+    <div className="mt-2 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-elev)]/70 p-2.5">
+      <div className="text-[10px] uppercase tracking-widest2 text-[var(--text-muted)] mb-2">
+        References
+      </div>
+      <ol className="space-y-1.5 list-decimal pl-4">
+        {sources.map((s, idx) => (
+          <li key={s.url} className="text-[12px] leading-[18px] text-[var(--text-secondary)]">
+            <a
+              href={s.url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[var(--accent-cyan)] hover:text-[var(--text-primary)] transition-colors"
+            >
+              {s.title}
+            </a>
+            <span className="ml-2 text-[10px] text-[var(--text-muted)] font-mono uppercase tracking-widest2">
+              {s.domain}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function Footnotes({ sources }: { sources: Source[] }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 ml-1">
+      {sources.map((s, i) => (
+        <a
+          key={s.url}
+          href={s.url}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[var(--accent-cyan)] hover:text-[var(--text-primary)] transition-colors"
+          title={s.title}
+        >
+          <sup className="text-[10px] font-mono">{i + 1}</sup>
+        </a>
+      ))}
+    </span>
+  );
+}
+
+function ThoughtBundleMessage({ events, agents }: { events: DebateEvent[]; agents: RosterAgent[] }) {
+  const agentId = events[0]?.agentId ?? 'system';
+  const agent = findAgent(agents, agentId);
+  const persona = agent ? resolvePersona(agent) : null;
+  const firstTs = events[0]?.ts ?? Date.now();
+  const lastTs = events[events.length - 1]?.ts ?? firstTs;
+
+  const thinking = events
+    .filter((e) => e.type === 'think' && e.payload.text)
+    .map((e) => e.payload.text!)
+    .join('\n\n');
+
+  const searchText = events
+    .filter((e) => (e.type === 'search' || e.type === 'cite') && e.payload.text)
+    .map((e) => e.payload.text!)
+    .join('\n\n');
+
+  const sources = (() => {
+    const seen = new Set<string>();
+    const out: Source[] = [];
+    for (const e of events) {
+      for (const s of e.payload.sources || []) {
+        if (!s?.url || seen.has(s.url)) continue;
+        seen.add(s.url);
+        out.push(s);
+      }
+    }
+    return out;
+  })();
+
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      className="group flex gap-2.5 px-3 py-1.5"
+    >
+      <Avatar agentId={agentId} agents={agents} size={30} />
+      <div className="min-w-0 flex-1">
+        <div className="rounded-2xl border border-[var(--border-soft)] bg-[var(--bg-soft)] p-3">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)]">
+            <span className="font-display text-[12px] text-[var(--text-primary)]">
+              {persona?.name || displayName(agents, agentId)}
+            </span>
+            <span className="font-mono">
+              {formatTime(firstTs)}
+              {lastTs !== firstTs ? `–${formatTime(lastTs)}` : ''}
+            </span>
+            <span className="text-[10px] uppercase tracking-widest2 text-[var(--text-muted)]">
+              思考
+              {sources.length ? ' · 检索' : ''}
+            </span>
+          </div>
+
+          {thinking && (
+            <div className="mt-1.5 text-[12px] leading-[20px] text-[var(--text-secondary)]">
+              <div className="prose prose-invert m-0 break-words whitespace-pre-wrap">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{thinking}</ReactMarkdown>
+              </div>
+            </div>
+          )}
+
+          {searchText && (
+            <div className="mt-2 text-[12px] leading-[20px] text-[var(--text-secondary)]">
+              <div className="prose prose-invert m-0 break-words whitespace-pre-wrap">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{searchText}</ReactMarkdown>
+              </div>
+              {sources.length > 0 && (
+                <div className="mt-1 text-[11px] text-[var(--text-muted)]">
+                  来源
+                  <Footnotes sources={sources} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {sources.length > 0 && <References sources={sources} />}
+        </div>
+      </div>
+    </motion.article>
   );
 }
 
@@ -181,7 +345,7 @@ function SpeechMessage({
             </Chip>
           </div>
 
-          <div className="mt-2 text-[13px] leading-relaxed text-[var(--text-primary)]">
+          <div className="mt-2 text-[12px] leading-[20px] text-[var(--text-primary)]">
             <div className="prose prose-invert m-0 break-words whitespace-pre-wrap">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
@@ -189,12 +353,16 @@ function SpeechMessage({
                   a: ({ node, ...props }) => (
                     <a {...props} className="text-[var(--accent-cyan)] hover:text-[var(--text-primary)]" target="_blank" rel="noreferrer" />
                   ),
-                  code: ({ node, inline, ...props }) => (
-                    <code
-                      {...props}
-                      className={`rounded px-1 py-0.5 ${inline ? 'bg-[var(--bg-card-strong)]' : 'bg-[var(--bg-soft)] block p-2'}`}
-                    />
-                  ),
+                  code: (props: any) => {
+                    const inline = Boolean(props.inline);
+                    const { node, inline: _inline, ...rest } = props;
+                    return (
+                      <code
+                        {...rest}
+                        className={`rounded px-1 py-0.5 ${inline ? 'bg-[var(--bg-card-strong)]' : 'bg-[var(--bg-soft)] block p-2'}`}
+                      />
+                    );
+                  },
                 }}
               >
                 {speech.text}
@@ -249,13 +417,13 @@ function EventMessage({ event, agents }: { event: DebateEvent; agents: RosterAge
         transition={{ duration: 0.2 }}
         className="group px-3 py-1"
       >
-        <div className="min-w-0 text-[12px] leading-relaxed text-[var(--text-muted)]">
+        <div className="min-w-0 text-[12px] leading-[20px] text-[var(--text-muted)]">
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)]">
             <span className="font-medium">系统</span>
             <span className="font-mono">{formatTime(event.ts)}</span>
           </div>
           {text && (
-            <div className="mt-1 text-[12px] leading-relaxed text-[var(--text-secondary)]">
+            <div className="mt-1 text-[12px] leading-[20px] text-[var(--text-secondary)]">
               <div className="prose prose-invert m-0 break-words whitespace-pre-wrap">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
@@ -263,12 +431,16 @@ function EventMessage({ event, agents }: { event: DebateEvent; agents: RosterAge
                     a: ({ node, ...props }) => (
                       <a {...props} className="text-[var(--accent-cyan)] hover:text-[var(--text-primary)]" target="_blank" rel="noreferrer" />
                     ),
-                    code: ({ node, inline, ...props }) => (
-                      <code
-                        {...props}
-                        className={`rounded px-1 py-0.5 ${inline ? 'bg-[var(--bg-card-strong)]' : 'bg-[var(--bg-soft)] block p-2'}`}
-                      />
-                    ),
+                    code: (props: any) => {
+                      const inline = Boolean(props.inline);
+                      const { node, inline: _inline, ...rest } = props;
+                      return (
+                        <code
+                          {...rest}
+                          className={`rounded px-1 py-0.5 ${inline ? 'bg-[var(--bg-card-strong)]' : 'bg-[var(--bg-soft)] block p-2'}`}
+                        />
+                      );
+                    },
                   }}
                 >
                   {text}
@@ -300,7 +472,7 @@ function EventMessage({ event, agents }: { event: DebateEvent; agents: RosterAge
               <span>{displayName(agents, event.agentId)}</span>
               <span className="font-mono">{formatTime(event.ts)}</span>
             </div>
-            <div className="mt-1.5 text-[12px] leading-relaxed text-[var(--text-primary)]">
+            <div className="mt-1.5 text-[12px] leading-[20px] text-[var(--text-primary)]">
               <div className="prose prose-invert m-0 break-words whitespace-pre-wrap">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
@@ -308,12 +480,16 @@ function EventMessage({ event, agents }: { event: DebateEvent; agents: RosterAge
                     a: ({ node, ...props }) => (
                       <a {...props} className="text-[var(--accent-cyan)] hover:text-[var(--text-primary)]" target="_blank" rel="noreferrer" />
                     ),
-                    code: ({ node, inline, ...props }) => (
-                      <code
-                        {...props}
-                        className={`rounded px-1 py-0.5 ${inline ? 'bg-[var(--bg-card-strong)]' : 'bg-[var(--bg-soft)] block p-2'}`}
-                      />
-                    ),
+                    code: (props: any) => {
+                      const inline = Boolean(props.inline);
+                      const { node, inline: _inline, ...rest } = props;
+                      return (
+                        <code
+                          {...rest}
+                          className={`rounded px-1 py-0.5 ${inline ? 'bg-[var(--bg-card-strong)]' : 'bg-[var(--bg-soft)] block p-2'}`}
+                        />
+                      );
+                    },
                   }}
                 >
                   {text}
@@ -348,7 +524,7 @@ function EventMessage({ event, agents }: { event: DebateEvent; agents: RosterAge
 
           {text && (
             <div
-              className={`mt-1.5 text-[12px] leading-relaxed ${
+              className={`mt-1.5 text-[12px] leading-[20px] ${
                 event.type === 'think'
                   ? 'font-mono text-[var(--accent-gold)]/85'
                   : event.type === 'search' || event.type === 'cite'
@@ -363,12 +539,16 @@ function EventMessage({ event, agents }: { event: DebateEvent; agents: RosterAge
                     a: ({ node, ...props }) => (
                       <a {...props} className="text-[var(--accent-cyan)] hover:text-[var(--text-primary)]" target="_blank" rel="noreferrer" />
                     ),
-                    code: ({ node, inline, ...props }) => (
-                      <code
-                        {...props}
-                        className={`rounded px-1 py-0.5 ${inline ? 'bg-[var(--bg-card-strong)]' : 'bg-[var(--bg-soft)] block p-2'}`}
-                      />
-                    ),
+                    code: (props: any) => {
+                      const inline = Boolean(props.inline);
+                      const { node, inline: _inline, ...rest } = props;
+                      return (
+                        <code
+                          {...rest}
+                          className={`rounded px-1 py-0.5 ${inline ? 'bg-[var(--bg-card-strong)]' : 'bg-[var(--bg-soft)] block p-2'}`}
+                        />
+                      );
+                    },
                   }}
                 >
                   {text}
@@ -428,11 +608,12 @@ export function DiscussionChannel() {
       speech,
     }));
 
-    return [...events, ...speeches].sort((a, b) => {
+    const sorted = [...events, ...speeches].sort((a, b) => {
       if (a.ts !== b.ts) return a.ts - b.ts;
       if (a.kind === b.kind) return a.id.localeCompare(b.id);
       return a.kind === 'event' ? -1 : 1;
     });
+    return mergeThoughtEvents(sorted);
   }, [session.events, session.speeches]);
 
   useEffect(() => {
@@ -472,6 +653,8 @@ export function DiscussionChannel() {
                     agents={agents}
                     isLast={index === timeline.length - 1}
                   />
+                ) : item.kind === 'eventBundle' ? (
+                  <ThoughtBundleMessage key={item.id} events={item.events} agents={agents} />
                 ) : (
                   <EventMessage key={item.id} event={item.event} agents={agents} />
                 ),
@@ -516,7 +699,7 @@ export function DiscussionChannel() {
                 发送
               </button>
             </div>
-            <div className="text-[10px] text-[var(--text-muted)]">
+            <div className="text-[12px] text-[var(--text-muted)]">
               Enter 发送，Shift+Enter 换行。
             </div>
           </div>

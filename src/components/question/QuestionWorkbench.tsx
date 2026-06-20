@@ -45,7 +45,7 @@ export function QuestionWorkbench() {
             title={`${n} 轮辩论`}
             className={`w-6 h-6 rounded-md text-[11px] font-medium transition-all
               ${maxRounds === n
-                ? 'bg-[var(--accent-gold)] text-white shadow-[0_1px_3px_-1px_rgba(168,118,26,0.5)]'
+                ? 'bg-[var(--accent-gold)] text-white shadow-[0_1px_3px_-1px_rgba(26,26,26,0.28)]'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]'}
               ${isLive ? 'opacity-40 cursor-not-allowed' : ''}`}
           >

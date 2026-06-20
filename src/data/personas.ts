@@ -89,7 +89,7 @@ export const PERSONAS: Persona[] = [
     id: 'ethicist',
     name: '道德卫士',
     emoji: '⚖',
-    gradient: ['#9A8CFF', '#7565D6'],
+    gradient: ['#3A435C', '#7E8BB0'],
     oneLiner: '伦理边界 · 公平正义',
     description:
       '从伦理、隐私、公平性角度审视方案。会问"谁会因此受损？""权力是否被滥用？"。',

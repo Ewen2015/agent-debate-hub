@@ -18,7 +18,7 @@ import { resolveLLMConfig } from '@/engine/LLMConfig';
 import { useRosterStore } from '@/store/staticStores';
 import { useSessionStore } from '@/store/sessionStore';
 import type { DebateEvent, RosterAgent, Source, Speech } from '@/types';
-import { resolveSource } from '@/engine/SearchResolver';
+import { isSearchResolverConfigured, resolveSource } from '@/engine/SearchResolver';
 
 const uid = () => Math.random().toString(36).slice(2, 11);
 const delay = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
@@ -168,7 +168,7 @@ ${stanceDesc}
 
 2. **交叉引用**：发言中必须显式回应前文某一 Agent 的具体观点，使用「回应 @[名字] 关于「...」的观点」格式。如果你是首位发言者，则阐述你的核心论点。
 
-3. **证据优先**：涉及事实性主张时，优先调用 web_search 检索最新数据、案例或报告来支撑你的论点。不要凭空捏造数据或引用不存在的来源。
+3. **证据优先**：如果提供了联网检索结果，必须在 <answer> 中引用至少 1 条来源。不要凭空捏造数据或引用不存在的来源。
 
 4. **诚实性**：当对方证据更强时，明确说「这一点我需要调整立场」而非诡辩。
 
@@ -200,6 +200,7 @@ async function chatWithTools(
   cfg: LLMConfig,
   messages: ChatMessage[],
   abort: AbortSignal,
+  actorAgentId: string,
   onReasoning: (r: string) => void,
 ): Promise<{ final: string; reasoning: string; sources: Source[] }> {
   let m = [...messages];
@@ -210,7 +211,7 @@ async function chatWithTools(
     const resp = await chat(cfg, m, { signal: abort, onReasoning: (r) => (aggregatedReasoning = r) });
     onReasoning(resp.reasoning || '');
 
-    // 捕获原生搜索返回的 sources（Anthropic / Ark）
+    // 捕获原生搜索返回的 sources（Anthropic）
     if (resp.sources?.length) {
       const mapped: Source[] = resp.sources.map((s) => ({
         title: s.title,
@@ -222,9 +223,9 @@ async function chatWithTools(
       pushEvent({
         id: uid(),
         ts: Date.now(),
-        agentId: 'system',
+        agentId: actorAgentId,
         type: 'search',
-        payload: { text: `原生联网检索返回 ${mapped.length} 条结果`, sources: mapped },
+        payload: { text: '', sources: mapped },
       });
     }
 
@@ -249,30 +250,15 @@ async function chatWithTools(
       if (tc.name !== 'web_search') continue;
       const query = (tc.arguments as any).query || '';
       const recency = (tc.arguments as any).recency_days;
-      pushEvent({
-        id: uid(),
-        ts: Date.now(),
-        agentId: 'system',
-        type: 'search',
-        payload: { text: `触发联网检索：「${query}」` },
-      });
       const resolved = await resolveSource(query, recency);
       if (resolved.length) {
         sources.push(...resolved);
         pushEvent({
           id: uid(),
           ts: Date.now(),
-          agentId: 'system',
+          agentId: actorAgentId,
           type: 'cite',
-          payload: { text: `检索到 ${resolved.length} 条资料`, sources: resolved },
-        });
-      } else {
-        pushEvent({
-          id: uid(),
-          ts: Date.now(),
-          agentId: 'system',
-          type: 'search',
-          payload: { text: `未检索到相关资料（需配置 Tavily 或 Serper API Key 才能使用 function tool 搜索）` },
+          payload: { text: '', sources: resolved },
         });
       }
       const toolResult = resolved
@@ -615,13 +601,72 @@ async function speak(
 ): Promise<SpeakResult> {
   const ctrl = new AbortController();
   try {
-    const result = await chatWithTools(
-      cfg,
-      history,
-      ctrl.signal,
-      (r) => {
+    const kind =
+      cfg.baseUrl.includes('anthropic.com')
+        ? 'anthropic'
+        : cfg.baseUrl.includes('ark.cn-beijing.volces.com')
+        ? 'ark-coding'
+        : 'openai';
+
+    const session = useSessionStore.getState().session;
+    const persona = resolvePersona(agent);
+    const preSources: Source[] = [];
+
+    // 联网检索（可选）：Anthropic 原生联网；其他 Provider 需配置 Tavily/Serper
+    const searchReady = cfg.enableSearch && (kind === 'anthropic' || isSearchResolverConfigured());
+
+    if (kind !== 'anthropic' && searchReady) {
+      const lastOpponent = session.speeches
+        .slice()
+        .reverse()
+        .find((s) => s.agentId !== agent.id && s.round === round)?.text;
+      const query = [
+        session.question,
+        session.background ? `背景：${session.background}` : '',
+        lastOpponent ? `对方观点：${lastOpponent.slice(0, 80)}` : '',
+        '最新 数据 报告 案例',
+      ]
+        .filter(Boolean)
+        .join('；');
+
+      const resolved = await resolveSource(query, 365);
+      if (resolved.length) {
+        preSources.push(...resolved);
+        pushEvent({
+          id: uid(),
+          ts: Date.now(),
+          agentId: agent.id,
+          type: 'cite',
+          payload: { text: '', sources: resolved },
+        });
+        history.push({
+          role: 'user',
+          content:
+            `以下为联网检索结果（请引用来源；不要编造）：\n\n` +
+            resolved
+              .map((s) => `【${s.title}】 ${s.url}（${s.domain}）\n摘要：${s.snippet || ''}`)
+              .join('\n\n'),
+        });
+      }
+    } else if (kind === 'anthropic' && searchReady) {
+      history.push({
+        role: 'user',
+        content:
+          '在输出 <answer> 之前，请尝试调用 web_search 获取最新资料，并在回答中引用来源。',
+      });
+    } else if (cfg.enableSearch && kind !== 'anthropic' && !isSearchResolverConfigured()) {
+      pushEvent({
+        id: uid(),
+        ts: Date.now(),
+        agentId: 'system',
+        type: 'system',
+        payload: { text: '未配置搜索 Key，跳过联网检索' },
+      });
+    }
+
+    const runOnce = async () =>
+      chatWithTools(cfg, history, ctrl.signal, agent.id, (r: string) => {
         if (r) {
-          const persona = resolvePersona(agent);
           pushEvent({
             id: uid(),
             ts: Date.now(),
@@ -630,9 +675,26 @@ async function speak(
             payload: { text: r, subText: `${persona.name} 实时思考` },
           });
         }
-      },
-    );
-    return { final: result.final, sources: result.sources };
+      });
+
+    let result = await runOnce();
+    // 对 Anthropic 且已开启搜索：若未返回 sources，提示一次并重试
+    if (searchReady && kind === 'anthropic' && result.sources.length === 0) {
+      pushEvent({
+        id: uid(),
+        ts: Date.now(),
+        agentId: agent.id,
+        type: 'system',
+        payload: { text: '未返回联网来源，重新检索一次', subText: '补充检索' },
+      });
+      history.push({
+        role: 'user',
+        content: '你上一轮没有返回任何 sources。请使用 web_search 获取至少 1 条来源，并在 <answer> 中引用。',
+      });
+      result = await runOnce();
+    }
+
+    return { final: result.final, sources: [...preSources, ...result.sources] };
   } catch (e: any) {
     if (e instanceof LLMError) {
       pushEvent({

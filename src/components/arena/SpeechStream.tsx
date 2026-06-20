@@ -8,9 +8,9 @@ import { Chip } from '@/components/shared/Chip';
 import type { AgentStance, Speech } from '@/types';
 
 const STANCE_COLOR: Record<AgentStance, string> = {
-  pro: '#E8B14C',
-  con: '#F47174',
-  neutral: '#5FE0C7',
+  pro: '#B8A878',
+  con: '#D08877',
+  neutral: '#6FB3A8',
 };
 
 const STANCE_LABEL: Record<AgentStance, { text: string; tone: 'gold' | 'rose' | 'cyan' }> = {

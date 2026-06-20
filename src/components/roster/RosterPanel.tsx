@@ -42,7 +42,7 @@ export function RosterPanel() {
                 onClick={() => setGroupSize(n)}
                 className={`flex-1 h-9 rounded-md text-xs font-mono transition-all
                   ${active
-                    ? 'bg-gradient-to-b from-gold-300 to-gold-400 text-[var(--text-primary)] shadow-glow'
+                    ? 'bg-gradient-to-b from-[var(--accent-gold)] to-[#5A4B2D] text-white shadow-[0_1px_0_0_rgba(255,255,255,0.18)_inset,0_10px_24px_-18px_rgba(26,26,26,0.24)]'
                     : 'bg-[var(--bg-card)] text-[var(--text-primary)]/40 border border-[var(--border-soft)] hover:bg-[var(--bg-card-strong)]'}`}
               >
                 {n}
@@ -199,7 +199,7 @@ export function RosterPanel() {
         onClick={reset}
         fullWidth
       >
-        重置为默认 3 人团
+        重置为默认 2 人团
       </Button>
     </div>
   );

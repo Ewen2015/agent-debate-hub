@@ -19,7 +19,7 @@ interface ButtonProps {
 
 const variantClass: Record<Variant, string> = {
   primary:
-    'bg-gradient-to-b from-[var(--accent-gold)] to-[#A8761A] text-white hover:brightness-110 shadow-[0_1px_0_0_rgba(255,255,255,0.2)_inset,0_2px_8px_-2px_rgba(168,118,26,0.4)]',
+    'bg-gradient-to-b from-[var(--accent-gold)] to-[#5A4B2D] text-white hover:brightness-110 shadow-[0_1px_0_0_rgba(255,255,255,0.18)_inset,0_10px_24px_-18px_rgba(26,26,26,0.22)]',
   secondary:
     'border border-[var(--border-strong)] bg-[var(--bg-card)] text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-gold)]/40',
   ghost:

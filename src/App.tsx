@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Hash, Plus, Trash2, Check } from 'lucide-react';
+import { Hash, Plus, Trash2, Check, Edit3, UserMinus } from 'lucide-react';
 import { useUIStore, useRosterStore, useGatewayStore } from '@/store/staticStores';
 import { useSessionStore } from '@/store/sessionStore';
 import { resolvePersona } from '@/engine/MockLLM';
@@ -82,7 +82,7 @@ export default function App() {
         title="Final Report"
         subtitle="统一结论报告"
         side="right"
-        width="w-[520px]"
+        width="w-[40vw] min-w-[460px] max-w-[760px]"
       >
         <ReportPanel />
       </Drawer>
@@ -109,6 +109,7 @@ function WorkspaceSidebar({
   const deleteChannel = useSessionStore((s) => s.deleteChannel);
   const report = useSessionStore((s) => s.report);
   const agents = useRosterStore((s) => s.agents);
+  const removeAgent = useRosterStore((s) => s.removeAgent);
   const gatewayProviders = useGatewayStore((s) => s.providers);
   const activeProviderId = useGatewayStore((s) => s.activeProviderId);
   const activeProvider = gatewayProviders.find((p) => p.id === activeProviderId);
@@ -124,22 +125,36 @@ function WorkspaceSidebar({
 
   // Right-click context menu state
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; channelId: string; name: string } | null>(null);
+  const [memberMenu, setMemberMenu] = useState<{ x: number; y: number; agentId: string; name: string } | null>(null);
 
-  const handleContextMenu = useCallback((e: React.MouseEvent, channelId: string, name: string) => {
+  const closeMenus = useCallback(() => {
+    setCtxMenu(null);
+    setMemberMenu(null);
+  }, []);
+
+  const handleChannelContextMenu = useCallback((e: React.MouseEvent, channelId: string, name: string) => {
     e.preventDefault();
     e.stopPropagation();
-    const x = Math.min(e.clientX, window.innerWidth - 200);
-    const y = Math.min(e.clientY, window.innerHeight - 160);
+    const x = Math.min(e.clientX, window.innerWidth - 220);
+    const y = Math.min(e.clientY, window.innerHeight - 180);
+    setMemberMenu(null);
     setCtxMenu({ x, y, channelId, name });
   }, []);
 
-  const closeContextMenu = useCallback(() => setCtxMenu(null), []);
+  const handleMemberContextMenu = useCallback((e: React.MouseEvent, agentId: string, name: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const x = Math.min(e.clientX, window.innerWidth - 220);
+    const y = Math.min(e.clientY, window.innerHeight - 180);
+    setCtxMenu(null);
+    setMemberMenu({ x, y, agentId, name });
+  }, []);
 
   useEffect(() => {
-    if (!ctxMenu) return;
-    const handleClick = () => closeContextMenu();
-    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') closeContextMenu(); };
-    const handleScroll = () => closeContextMenu();
+    if (!ctxMenu && !memberMenu) return;
+    const handleClick = () => closeMenus();
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') closeMenus(); };
+    const handleScroll = () => closeMenus();
     window.addEventListener('click', handleClick);
     window.addEventListener('keydown', handleEsc);
     window.addEventListener('scroll', handleScroll, true);
@@ -148,16 +163,26 @@ function WorkspaceSidebar({
       window.removeEventListener('keydown', handleEsc);
       window.removeEventListener('scroll', handleScroll, true);
     };
-  }, [ctxMenu, closeContextMenu]);
+  }, [ctxMenu, memberMenu, closeMenus]);
 
   const handleDeleteChannel = (channelId: string) => {
     deleteChannel(channelId);
-    closeContextMenu();
+    closeMenus();
   };
 
   const handleSwitchChannel = (channelId: string) => {
     setActiveSession(channelId);
-    closeContextMenu();
+    closeMenus();
+  };
+
+  const handleEditPersona = () => {
+    onRoster();
+    closeMenus();
+  };
+
+  const handleRemoveFromDebate = (agentId: string) => {
+    removeAgent(agentId);
+    closeMenus();
   };
 
   return (
@@ -208,7 +233,7 @@ function WorkspaceSidebar({
                 <div
                   key={item.id}
                   onClick={() => setActiveSession(item.id)}
-                  onContextMenu={(e) => handleContextMenu(e, item.id, name)}
+                  onContextMenu={(e) => handleChannelContextMenu(e, item.id, name)}
                   className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${
                     isActive
                       ? 'bg-[var(--accent-gold)]/12 text-[var(--text-primary)]'
@@ -260,7 +285,13 @@ function WorkspaceSidebar({
                     >
                       {persona.emoji}
                     </div>
-                    <span className="min-w-0 truncate text-[var(--text-secondary)]">{persona.name}</span>
+                    <span
+                      className="min-w-0 truncate text-[var(--text-secondary)]"
+                      onContextMenu={(e) => handleMemberContextMenu(e, a.id, persona.name)}
+                      title="右键：编辑人设 / 移除"
+                    >
+                      {persona.name}
+                    </span>
                     <span className="ml-auto flex-shrink-0 text-[10px] text-[var(--text-muted)]">
                       {persona.stance === 'pro' ? '支持' : persona.stance === 'con' ? '反对' : '中立'}
                     </span>
@@ -331,6 +362,16 @@ function WorkspaceSidebar({
         />,
         document.body,
       )}
+      {memberMenu && createPortal(
+        <MemberContextMenu
+          x={memberMenu.x}
+          y={memberMenu.y}
+          memberName={memberMenu.name}
+          onEditPersona={handleEditPersona}
+          onRemove={() => handleRemoveFromDebate(memberMenu.agentId)}
+        />,
+        document.body,
+      )}
     </aside>
   );
 }
@@ -378,6 +419,51 @@ function ChannelContextMenu({
       >
         <Trash2 size={14} />
         <span>删除频道</span>
+      </button>
+    </div>
+  );
+}
+
+function MemberContextMenu({
+  x,
+  y,
+  memberName,
+  onEditPersona,
+  onRemove,
+}: {
+  x: number;
+  y: number;
+  memberName: string;
+  onEditPersona: () => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div
+      className="fixed z-[100] min-w-[200px] rounded-xl border border-[var(--border-soft)] bg-[var(--bg-elev)] py-1.5 shadow-float backdrop-blur-xl"
+      style={{ left: x, top: y }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="px-3 py-1.5 border-b border-[var(--border-soft)] mb-1">
+        <div className="flex items-center gap-2 text-[11px] text-[var(--text-muted)]">
+          <span className="font-medium truncate">{memberName}</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onEditPersona}
+        className="w-full px-3 py-1.5 flex items-center gap-2.5 text-[12px] text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] transition-colors text-left"
+      >
+        <Edit3 size={14} className="text-[var(--text-muted)]" />
+        <span>编辑人设</span>
+        <span className="ml-auto text-[10px] text-[var(--text-muted)]">打开成员管理</span>
+      </button>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="w-full px-3 py-1.5 flex items-center gap-2.5 text-[12px] text-[var(--accent-rose)] hover:bg-[var(--accent-rose)]/8 transition-colors text-left"
+      >
+        <UserMinus size={14} />
+        <span>从讨论移除</span>
       </button>
     </div>
   );

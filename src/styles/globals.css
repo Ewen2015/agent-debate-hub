@@ -225,8 +225,8 @@ input, textarea {
 }
 
 .prose-invert {
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.7;
 }
 .prose-invert p {
   margin: 0.4em 0;
