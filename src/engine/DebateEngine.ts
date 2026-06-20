@@ -189,10 +189,25 @@ const parseAnswer = (raw: string): { thinking: string; answer: string } => {
   const thinkMatch = raw.match(/<thinking>([\s\S]*?)<\/thinking>/i);
   const ansMatch = raw.match(/<answer>([\s\S]*?)<\/answer>/i);
   return {
-    thinking: thinkMatch?.[1].trim() || '',
-    answer: ansMatch?.[1].trim() || raw.trim(),
+    thinking: sanitizeThinking(thinkMatch?.[1].trim() || ''),
+    answer: ansMatch?.[1].trim() || raw.replace(/<thinking>[\s\S]*?<\/thinking>/i, '').replace(/<\/?answer>/gi, '').trim(),
   };
 };
+
+/** 清理思考内容中的工具调用标签和 artifacts */
+function sanitizeThinking(text: string): string {
+  return text
+    // 移除 DSML 工具调用标签（含全角竖线 ｜）
+    .replace(/<｜DSML｜\w+｜?[^>]*>([\s\S]*?)<\/｜DSML｜\w+｜?>/g, '')
+    .replace(/<\/?｜DSML｜[^>]*>/g, '')
+    // 移除残留的 tool_calls / function / parameter XML 标签
+    .replace(/<\/?(?:tool_calls|function_call|parameter|invoke|tool_call)[^>]*>/gi, '')
+    // 移除空的 <answer> 标签（防止泄露到 thinking）
+    .replace(/<\/?answer>/gi, '')
+    // 清理多余空行
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 
 // ── 多轮 function calling 循环：让 LLM 自己决定搜几次 ──
 // 对于 Anthropic / Ark，原生搜索在 chat() 内部完成，不会进入 tool call 循环。
