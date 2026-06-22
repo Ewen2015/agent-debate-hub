@@ -3,7 +3,7 @@
 > **Real-time multi-agent debate command center.**
 > Organize multiple AI agents with distinct personas into a brainstorming and debate flow, optionally enrich their arguments with search-like evidence, allow human intervention at any time, and produce a structured consensus report.
 
-> Default language: English. 中文版在下面。
+> Default language: English. 中文版见 [README_CN.md](./README_CN.md)。
 
 ![status](https://img.shields.io/badge/status-v0.1-5FE0C7) ![stack](https://img.shields.io/badge/stack-React%2018%20%2B%20Vite%206%20%2B%20TS-E8B14C) ![mode](https://img.shields.io/badge/runtime-provider%20ready-9A8CFF)
 
@@ -18,6 +18,62 @@ Group Debate Agent Hub is a local frontend prototype for coordinating a panel of
 - `src/engine/SearchResolver.ts` routes search-tool calls through Tavily / Serper if API keys are provided, while Anthropic/Ark can use native search
 
 It also includes persona helper modules and sample persona templates in `src/engine/MockLLM.ts`, but the debate pipeline itself relies on the real LLM integration when a provider is configured.
+
+## How the Debate Team Works
+
+The hub is not a single omniscient model — it is a **panel of independent agents**, each carrying its own persona, stance, and private memory, orchestrated by `src/engine/DebateEngine.ts`. A run moves through four phases: `idle → brainstorm → debate → report`.
+
+### 1. Agents as independent reasoners
+
+Each agent is a first-class citizen with its own state:
+
+- **Persona** (`resolvePersona` in `MockLLM.ts`): name, one-liner, description, focus areas, tone, and a **stance** — `pro` / `con` / `neutral`. The neutral agent acts as a fact-checker / arbiter rather than taking a side.
+- **Private chat history**: every agent owns a separate `ChatMessage[]` (held in an in-memory `sessionMemory` map, keyed by `sessionId → agentId`). The system prompt is built per-agent from persona + stance + topic + debate rules, and is **never shared** between agents — an agent only ever sees the *others' final answers*, never their reasoning traces or system prompts.
+- **Persistent memory**: after each turn the agent's history is persisted to `localStorage` via `sessionStore`, so a page refresh or a later session can resume with full context intact.
+
+### 2. The "think before you speak" protocol
+
+Every agent response is forced through a two-part output contract:
+
+```text
+<thinking>  ≥200 chars of genuine reasoning: deconstruct the claim,
+            surface counterexamples, weigh evidence, decide strategy </thinking>
+<answer>    ≤250 chars formal speech </answer>
+```
+
+`parseAnswer` splits the two and `sanitizeThinking` strips any leaked tool-call/artifact tags before the thinking is shown in the event stream. The `<thinking>` channel is also streamed live via `reasoning_content` / extended-thinking, so you watch each agent reason in real time.
+
+The system prompt enforces five debate disciplines: (1) think first, (2) **cross-reference** a specific prior argument (`回应 @[name] 关于「…」的观点`), (3) cite evidence, (4) **intellectual honesty** — concede when out-evidenced instead of sophistry, (5) advance rather than repeat, and (6) stay in character.
+
+### 3. Phased flow
+
+**Brainstorm** (`startBrainstorm`): sequential divergent pass. Each agent independently proposes 1–2 angles from its persona's lens, with an explicit instruction *not* to repeat prior agents' perspectives. Round 0 speeches seed the debate.
+
+**Debate** (`enterDebate`): multi-round adversarial loop (2–5 rounds, configurable). Each round, every agent receives a `user` message containing **the previous round's speeches from all other agents** plus the debate directive. Agents must respond to at least one opposing argument, may call `web_search`, and cannot parrot their own prior points. Memory accumulates across rounds and is reloaded from store on phase entry.
+
+**Report** (`ReportBuilder.build`): the transcript is condensed two ways:
+- A **template pass** clusters speeches by keyword themes (机会与价值 / 风险与边界 / 用户与体验 / 数据与证据 / 战略与时机 / 伦理与治理), tallies pro/con supporters per theme, and derives consensus (≥55% support, 0 opposition) vs. disagreement plus concrete action items.
+- An **LLM pass** (when a provider is configured) feeds the full transcript to the model with a strict-JSON schema, overriding the template's TL;DR / summary / consensus / disagreements / evaluation / actions for a tighter, content-grounded report. It falls back to the template on any error.
+
+### 4. Evidence & search
+
+Search is **opt-in and stance-aware**, never fabricated. Three paths, dispatched by `speak()` based on provider kind:
+
+- **Anthropic / Ark**: native web search runs *inside* `chat()`; the model searches on its own and returns `sources`. If it returns none, the engine re-prompts once and retries.
+- **OpenAI-compatible** (OpenAI / DeepSeek / Moonshot / Ollama / Custom): a `web_search` function tool is exposed; `chatWithTools` runs a **multi-turn tool loop** (up to 4 iterations) so the LLM decides how many times to search. Results are routed through `SearchResolver` (Tavily / Serper) and fed back as `tool` messages.
+- A pre-search pass crafts a query from topic + background + the opponent's last point to surface stance-relevant evidence before the main call.
+
+All sources flow into the event stream as `cite` events and attach to the originating speech, so the final report can list evidence per argument.
+
+### 5. Human-in-the-loop & control
+
+- **Interruption**: `pushHumanInterrupt` enqueues a moderator directive into a per-session buffer; the next agent's `user` message picks up the latest entry, steering the panel mid-flight.
+- **Lifecycle**: `pause` / `resume` gate the loop via a polling `waitIfPaused`; `stop` flips phase to `idle` and resets agent statuses. Every loop boundary checks `isStopped()` so a stop takes effect between agents/rounds, never mid-call.
+- **Validation, no silent degradation**: `validateLLMConfig` hard-fails with a precise error before any run if the provider is missing API key / base URL / model — the engine never silently falls back to mock generation.
+
+### 6. Session isolation
+
+All memory, interrupt buffers, events, and speeches are scoped to `activeSessionId`. Switching sessions swaps the active memory map and interrupt buffer, so multiple topics can coexist without cross-contamination.
 
 ## Key Features
 
@@ -106,115 +162,5 @@ src/
 - Audio or transcript playback
 
 ## License
-
-MIT
-
----
-
-# Group Debate Agent Hub · 议事厅
-
-> **多 Agent 实时辩论指挥台。**
-> 将多个独立人设的 AI Agent 组织成一个智囊团，先做发散式 Brainstorm，再进入结构化辩论，支持人类随时介入，并输出统一结论报告。
-
-> 默认语言：英文。中文内容在下面。
-
-## 项目简介
-
-Group Debate Agent Hub 是一个本地前端原型，展示如何编排多角色 AI 参与 brainstorm 和 debate 流程。它支持：
-
-- 议题发散思考
-- 多轮正反辩论
-- 拟真检索式证据补强
-- 运行中人类纠偏指令
-- 自动生成结构化结论报告
-
-当前实现基于 `src/engine/DebateEngine.ts` 的 Provider 驱动辩论流程，真实执行路径依赖于你在 Gateway 中配置的模型提供者。`src/engine/MockLLM.ts` 仅用于人设解析和辅助生成逻辑，并非默认的运行核心。
-
-## 核心功能
-
-- 可配置 Agent 人设：名称、立场、语气、关注点、论风
-- 2–8 名 Agent 会话，支持预置自动补全
-- Brainstorm 与 Debate 阶段，实时事件与发言流
-- 支持 2–5 轮辩论
-- 拟真搜索资料补强发言
-- 运行中随时插入人类指令
-- 暂停 / 继续 / 终止 / 重新开始
-- Provider 模板：OpenAI / Anthropic / DeepSeek / Moonshot / Ollama / Custom
-- 生成结构化报告：共识、分歧、关键观点、行动建议
-- 使用 `localStorage` 保持会话状态
-
-## 快速开始
-
-安装依赖：
-
-```bash
-pnpm install
-```
-
-启动开发服务器：
-
-```bash
-pnpm dev
-```
-
-在浏览器打开：
-
-```text
-http://localhost:5173
-```
-
-构建生产版本：
-
-```bash
-pnpm build
-pnpm preview
-```
-
-## 目录说明
-
-```
-src/
-├── components/
-│   ├── arena/        # 议场 UI：AgentRing、EventStream、SpeechStream、StageControl
-│   ├── gateway/      # 模型接入配置
-│   ├── question/     # 议题编辑与提示设置
-│   ├── report/       # 报告面板
-│   ├── roster/       # Agent 人设列表
-│   └── shared/       # 可复用组件
-├── data/             # 人设预设与模拟资料数据
-├── engine/           # 辩论引擎、Mock LLM、代理配置、报告生成器
-├── hooks/            # 自定义 Hook
-├── store/            # Zustand 状态与持久化
-├── styles/           # 全局样式与主题
-├── types/            # TypeScript 类型
-└── main.tsx          # 应用入口
-```
-
-## 运行说明
-
-- 当前真实运行路径由 `src/engine/DebateEngine.ts` 控制，依赖 `src/engine/LLMConfig.ts` 所解析的 Provider 配置。
-- `src/engine/MockLLM.ts` 只负责人物设定、文本装饰与生成辅助逻辑，不决定是否使用真实模型。
-- 真实搜索功能可通过 Anthropic/Ark 的原生联网或 `src/engine/SearchResolver.ts` 中的 Tavily/Serper Key 启用。
-- 如果 Provider 未配置完整，系统会在 Gateway 中提示填写 API Key、Base URL 和 Model。
-
-## 推荐使用流程
-
-1. 打开议题编辑器并设置问题。
-2. 在 Roster 面板配置 Agent 人设。
-3. 选择辩论模式和 Provider 模板。
-4. 启动 Brainstorm 或直接进入 Debate。
-5. 观察事件流并在必要时插入纠偏指令。
-6. 查看生成报告并导出。
-
-## 路线图
-
-- 真实模型接入（OpenAI、Anthropic、DeepSeek）
-- 外部搜索 / 证据检索
-- 多议题会话管理
-- 报告 PDF 导出
-- WebSocket 协作和实时共享
-- 音频/文本回放
-
-## 许可
 
 MIT
