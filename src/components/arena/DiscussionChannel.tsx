@@ -618,7 +618,7 @@ function RoundSummaryCard({
                   )}
                 </div>
                 <div className="text-[12.5px] leading-[19px] text-[var(--text-primary)]/85 break-words">
-                  {isExpanded && canExpand && isFallback ? full : v.viewpoint}
+                  {isExpanded && canExpand ? full : v.viewpoint}
                 </div>
                 {canExpand && (
                   <button
