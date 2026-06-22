@@ -199,7 +199,7 @@ export function StageControl() {
         </>
       )}
 
-      {session.phase !== 'idle' && (
+      {(session.phase !== 'idle' || session.speeches.length > 0) && (
         <Button
           variant="primary"
           size="sm"
