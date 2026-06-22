@@ -40,6 +40,7 @@ export type EventType =
   | 'search'
   | 'cite'
   | 'interrupt'
+  | 'round-summary'
   | 'system';
 
 export interface DebateEvent {
@@ -81,6 +82,8 @@ export interface RoundSummary {
   /** 本轮观点演进 / 交锋的一句话总结 */
   digest: string;
   viewpoints: RoundViewpoint[];
+  /** 本轮议题收敛度 ∈ [0,1] */
+  convergence: number;
 }
 
 export interface Session {

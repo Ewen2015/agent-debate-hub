@@ -32,6 +32,10 @@ export function StageControl() {
 
   const handleStart = async () => {
     if (!canStart) return;
+    // 用户未手动改名时，用 LLM 为该频道生成简洁标题（异步、不阻塞辩论）
+    if (!session.titleEdited) {
+      useSessionStore.getState().generateChannelTitle(session.question);
+    }
     setBusy('brainstorm');
     try {
       await DebateEngine.startBrainstorm();

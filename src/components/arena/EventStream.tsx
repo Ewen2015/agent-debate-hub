@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, Search, MessageSquare, BookOpenCheck, Sparkles, AlertTriangle,
-  ChevronDown, ChevronUp,
+  GitCompareArrows, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { useSessionStore } from '@/store/sessionStore';
 import { useRosterStore } from '@/store/staticStores';
@@ -28,6 +28,8 @@ const typeMeta = (type: DebateEvent['type']) => {
       return { icon: <BookOpenCheck size={12} />, label: '引用', tone: 'cyan' as const };
     case 'interrupt':
       return { icon: <AlertTriangle size={12} />, label: '人类介入', tone: 'rose' as const };
+    case 'round-summary':
+      return { icon: <GitCompareArrows size={12} />, label: '观点总结', tone: 'gold' as const };
     case 'system':
       return { icon: <Sparkles size={12} />, label: '系统', tone: 'mute' as const };
   }

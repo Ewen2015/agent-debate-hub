@@ -14,6 +14,7 @@
 
 import { resolvePersona } from '@/engine/MockLLM';
 import { stripLLMArtifacts } from '@/engine/textUtils';
+import { computeConvergence, jaccard, tokenize } from '@/engine/convergence';
 import { chat, describeLLMError, LLMError, type ChatMessage, type LLMConfig } from '@/engine/LLMClient';
 import { resolveLLMConfig } from '@/engine/LLMConfig';
 import { useRosterStore } from '@/store/staticStores';
@@ -215,8 +216,12 @@ const truncateViewpoint = (s: string, max = 30) => {
 
 /**
  * 每轮结束后由系统总结「本轮观点演进」。
- * 复用主 LLM 配置做一次轻量 chat 调用，要求严格 JSON 输出；
- * 解析失败则回退到截断式降级，保证不阻断辩论流程。
+ * 复用主 LLM 配置做一次轻量 chat 调用，要求严格 JSON 输出。
+ * 关键：观点必须是「提炼总结」，而非照搬原句。
+ *  - prompt 明确禁止复述原文、要求用第三人称概括立场与论点
+ *  - 解析后做质量校验：若某条 viewpoint 缺失、或与原文词集 Jaccard 过高（即照搬），
+ *    则重试一次；仍不达标则该条标记为「（未能提炼）」，绝不把原话当观点。
+ *  - digest 同理，空或雷同则降级为结构化文案。
  */
 async function summarizeRound(
   round: number,
@@ -224,22 +229,27 @@ async function summarizeRound(
   speeches: Speech[],
   agents: RosterAgent[],
   cfg: LLMConfig,
+  prevRound: Speech[] = [],
 ): Promise<RoundSummary> {
   const nameOf = (id: string) => {
     const a = agents.find((x) => x.id === id);
     return a ? resolvePersona(a).name : 'Agent';
   };
 
-  // 降级路径：无需 LLM 也能产出可用总结
+  // 收敛度（纯计算，不依赖 LLM）
+  const convergence = computeConvergence(speeches, prevRound).score;
+
+  // 降级路径：LLM 不可用时，明确标注「未能提炼」，绝不照搬原话
   const fallback = (): RoundSummary => ({
     round,
     title,
-    digest: `${title} · 共 ${speeches.length} 位发言者`,
+    digest: `${title}共 ${speeches.length} 位发言者参与，观点总结因模型不可用而省略。`,
+    convergence,
     viewpoints: speeches.map<RoundViewpoint>((sp) => ({
       agentId: sp.agentId,
       name: nameOf(sp.agentId),
       stance: sp.stance,
-      viewpoint: truncateViewpoint(sp.text),
+      viewpoint: '（未能自动提炼，见原发言）',
       evidenceCount: sp.sources?.length ?? 0,
     })),
   });
@@ -251,43 +261,88 @@ async function summarizeRound(
     .join('\n\n');
 
   const systemPrompt =
-    '你是严谨的辩论记录员。为每位发言者提炼一句不超过 30 字的核心观点，' +
-    '并给出一句话总结本轮观点的演进或交锋（不超过 40 字）。' +
-    '严格只输出 JSON，不要解释、不要 markdown 代码块。';
+    '你是严谨的辩论记录员，擅长把长发言浓缩成观点摘要。要求：\n' +
+    '1. 为每位发言者提炼一句不超过 30 字的核心观点——用第三人称概括其立场与主张；\n' +
+    '2. 严禁照搬、复述原文句子，必须改写为凝练的观点；\n' +
+    '3. 给出一句话总结本轮观点的演进或交锋（不超过 40 字）；\n' +
+    '4. 严格只输出 JSON，不要解释、不要 markdown 代码块。';
   const userPrompt =
     `议题：${useSessionStore.getState().session.question}\n\n本轮发言：\n${transcripts}\n\n` +
-    `请输出 JSON：{"digest":"本轮一句话总结","viewpoints":[{"agentId":"发言者ID","viewpoint":"核心观点"}]}。` +
-    `viewpoints 数量必须与发言者一致，agentId 必须从下列取：${speeches.map((s) => s.agentId).join('、')}。`;
+    `请输出 JSON：{"digest":"本轮一句话观点总结","viewpoints":[{"agentId":"发言者ID","viewpoint":"凝练后的核心观点"}]}。\n` +
+    `要求：viewpoints 数量必须与发言者一致；agentId 必须从下列取：${speeches.map((s) => s.agentId).join('、')}；` +
+    `viewpoint 必须是改写提炼的观点，不能是原句截取。`;
 
-  try {
-    const resp = await chat(cfg, [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ]);
-    const raw = stripLLMArtifacts(resp.content || '');
-    // 容错抠 JSON
-    const m = raw.match(/\{[\s\S]*\}/);
-    if (!m) return fallback();
-    const parsed = JSON.parse(m[0]) as {
-      digest?: string;
-      viewpoints?: Array<{ agentId?: string; viewpoint?: string }>;
-    };
-    const viewpointMap = new Map<string, string>();
-    for (const v of parsed.viewpoints ?? []) {
-      if (v.agentId && v.viewpoint) viewpointMap.set(v.agentId, v.viewpoint);
+  // 原文词集，用于检测 LLM 是否照搬
+  const origTokens = new Map<string, Set<string>>();
+  for (const sp of speeches) origTokens.set(sp.agentId, tokenize(sp.text));
+
+  /** 校验单条 viewpoint 质量：存在、非空、与原文不高度雷同。 */
+  const isQualityViewpoint = (agentId: string, vp: string | undefined): boolean => {
+    if (!vp || !vp.trim()) return false;
+    const v = vp.trim();
+    // 过短或明显占位
+    if (v.length < 4) return false;
+    // 与原文词集 Jaccard 过高 → 照搬原话
+    const sim = jaccard(tokenize(v), origTokens.get(agentId) ?? new Set());
+    return sim < 0.6;
+  };
+
+  const parseOnce = async (): Promise<{ digest?: string; viewpoints?: Array<{ agentId?: string; viewpoint?: string }> } | null> => {
+    try {
+      const resp = await chat(cfg, [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ]);
+      const raw = stripLLMArtifacts(resp.content || '');
+      const m = raw.match(/\{[\s\S]*\}/);
+      if (!m) return null;
+      return JSON.parse(m[0]);
+    } catch {
+      return null;
     }
-    const viewpoints: RoundViewpoint[] = speeches.map<RoundViewpoint>((sp) => ({
+  };
+
+  let parsed = await parseOnce();
+  // 质量不达标（有照搬或缺失）则带提示重试一次
+  const needsRetry = (p: typeof parsed): boolean => {
+    if (!p) return true;
+    for (const sp of speeches) {
+      const vp = p.viewpoints?.find((v) => v.agentId === sp.agentId)?.viewpoint;
+      if (!isQualityViewpoint(sp.agentId, vp)) return true;
+    }
+    return false;
+  };
+  if (needsRetry(parsed)) {
+    const retry = await parseOnce();
+    if (retry) parsed = retry;
+  }
+
+  if (!parsed) return fallback();
+
+  const viewpointMap = new Map<string, string>();
+  for (const v of parsed.viewpoints ?? []) {
+    if (v.agentId && v.viewpoint) viewpointMap.set(v.agentId, v.viewpoint);
+  }
+  const viewpoints: RoundViewpoint[] = speeches.map<RoundViewpoint>((sp) => {
+    const vp = viewpointMap.get(sp.agentId);
+    return {
       agentId: sp.agentId,
       name: nameOf(sp.agentId),
       stance: sp.stance,
-      viewpoint: truncateViewpoint(viewpointMap.get(sp.agentId) ?? sp.text),
+      // 达标则用 LLM 提炼的观点；否则标注未提炼，绝不搬原话
+      viewpoint: isQualityViewpoint(sp.agentId, vp) ? truncateViewpoint(vp!, 30) : '（未能提炼，见原发言）',
       evidenceCount: sp.sources?.length ?? 0,
-    }));
-    const digest = truncateViewpoint(parsed.digest || '', 40) || fallback().digest;
-    return { round, title, digest, viewpoints };
-  } catch {
-    return fallback();
-  }
+    };
+  });
+
+  // digest 质量校验：非空且不与任一原文高度雷同
+  const digestRaw = (parsed.digest || '').trim();
+  const digestOk =
+    digestRaw.length >= 4 &&
+    speeches.every((sp) => jaccard(tokenize(digestRaw), origTokens.get(sp.agentId) ?? new Set()) < 0.7);
+  const digest = digestOk ? truncateViewpoint(digestRaw, 40) : `${title}观点总结`;
+
+  return { round, title, digest, viewpoints, convergence };
 }
 
 // ── 多轮 function calling 循环：让 LLM 自己决定搜几次 ──
@@ -506,8 +561,15 @@ export const DebateEngine = {
     const brainstormSpeeches = useSessionStore.getState().session.speeches.filter((s) => s.round === 0);
     if (brainstormSpeeches.length) {
       try {
-        const rs = await summarizeRound(0, 'Brainstorm', brainstormSpeeches, agents, cfg);
+        const rs = await summarizeRound(0, 'Brainstorm', brainstormSpeeches, agents, cfg, []);
         useSessionStore.getState().pushRoundSummary(rs);
+        pushEvent({
+          id: uid(),
+          ts: Date.now(),
+          agentId: 'system',
+          type: 'round-summary',
+          payload: { text: rs.digest, subText: `${rs.title} · 收敛度 ${(rs.convergence * 100).toFixed(0)}%`, round: 0 },
+        });
       } catch {
         // 静默降级
       }
@@ -664,18 +726,21 @@ export const DebateEngine = {
 
       // 系统总结本轮观点演进
       if (!isStopped()) {
-        const roundSpeeches = useSessionStore.getState().session.speeches.filter((s) => s.round === r);
+        const allSpeeches = useSessionStore.getState().session.speeches;
+        const roundSpeeches = allSpeeches.filter((s) => s.round === r);
+        // 上一轮发言：r=1 时取 Brainstorm(round 0)，否则取 r-1
+        const prevRound = allSpeeches.filter((s) => s.round === r - 1);
         if (roundSpeeches.length) {
-          pushEvent({
-            id: uid(),
-            ts: Date.now(),
-            agentId: 'system',
-            type: 'system',
-            payload: { text: `正在总结第 ${r} 轮观点演进…`, subText: '观点总结' },
-          });
           try {
-            const rs = await summarizeRound(r, `第 ${r} 轮`, roundSpeeches, agents, cfg);
+            const rs = await summarizeRound(r, `第 ${r} 轮`, roundSpeeches, agents, cfg, prevRound);
             useSessionStore.getState().pushRoundSummary(rs);
+            pushEvent({
+              id: uid(),
+              ts: Date.now(),
+              agentId: 'system',
+              type: 'round-summary',
+              payload: { text: rs.digest, subText: `${rs.title} · 收敛度 ${(rs.convergence * 100).toFixed(0)}%`, round: r },
+            });
           } catch {
             // 静默降级，不阻断后续轮次
           }

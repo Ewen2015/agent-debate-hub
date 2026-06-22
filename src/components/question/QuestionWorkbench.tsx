@@ -36,7 +36,7 @@ export function QuestionWorkbench() {
         className="flex-1 min-w-0 bg-transparent border-b border-[var(--accent-gold)]/25 focus:border-[var(--accent-gold)] outline-none font-display text-[14px] tracking-tightish text-[var(--text-primary)] placeholder:text-[var(--text-muted)] resize-none transition-colors py-0.5 leading-relaxed"
       />
 
-      <div className="flex items-center gap-1.5 flex-shrink-0">
+      <div className="flex items-center gap-1.5 flex-shrink-0" title="辩论轮数">
         {[2, 3, 4, 5].map((n) => (
           <button
             key={n}
@@ -52,6 +52,22 @@ export function QuestionWorkbench() {
             {n}
           </button>
         ))}
+        <input
+          type="number"
+          min={1}
+          max={10}
+          value={maxRounds}
+          disabled={isLive}
+          onChange={(e) => {
+            const n = Math.max(1, Math.min(10, Number(e.target.value) || 1));
+            setMaxRounds(n);
+          }}
+          title="手动输入轮数（1-10）"
+          className={`w-11 h-6 rounded-md text-[11px] font-medium text-center bg-[var(--bg-card)] border border-[var(--border-soft)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold)]/50 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
+            isLive ? 'opacity-40 cursor-not-allowed' : ''
+          }`}
+        />
+        <span className="text-[10px] text-[var(--text-muted)]">轮</span>
       </div>
 
       {showBg && (

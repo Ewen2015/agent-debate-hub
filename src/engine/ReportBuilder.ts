@@ -300,11 +300,22 @@ export const ReportBuilder = {
       report.roundSummaries.forEach((rs) => {
         lines.push(`### ${rs.title}`);
         lines.push(`- 本轮总结：${rs.digest}`);
+        if (typeof rs.convergence === 'number') {
+          lines.push(`- 议题收敛度：${(rs.convergence * 100).toFixed(0)}%`);
+        }
         rs.viewpoints.forEach((v) => {
           lines.push(`- **${v.name}**（${v.stance}）：${v.viewpoint}${v.evidenceCount ? `（${v.evidenceCount} 证据）` : ''}`);
         });
         lines.push('');
       });
+      const conv = report.roundSummaries
+        .filter((rs) => typeof rs.convergence === 'number')
+        .map((rs) => `${rs.title}: ${(rs.convergence! * 100).toFixed(0)}%`);
+      if (conv.length) {
+        lines.push(`## 议题收敛曲线`);
+        lines.push(conv.join('  →  '));
+        lines.push('');
+      }
     }
     lines.push(`## 行动建议`);
     report.actions.forEach((a, i) => lines.push(`${i + 1}. ${a}`));

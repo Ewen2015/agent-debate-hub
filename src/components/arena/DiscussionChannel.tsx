@@ -6,6 +6,7 @@ import {
   Brain,
   ChevronDown,
   ChevronUp,
+  GitCompareArrows,
   Hash,
   MessageSquare,
   Quote,
@@ -19,7 +20,7 @@ import { useRosterStore } from '@/store/staticStores';
 import { useSessionStore } from '@/store/sessionStore';
 import { Chip } from '@/components/shared/Chip';
 import { Markdown } from '@/components/shared/Markdown';
-import type { AgentStance, DebateEvent, RosterAgent, Source, Speech } from '@/types';
+import type { AgentStance, DebateEvent, RosterAgent, RoundViewpoint, Source, Speech } from '@/types';
 
 type Tone = 'gold' | 'cyan' | 'rose' | 'violet' | 'neutral' | 'mute';
 
@@ -60,6 +61,8 @@ const eventMeta = (type: DebateEvent['type']): { icon: ReactNode; label: string;
       return { icon: <BookOpenCheck size={13} />, label: '引用', tone: 'cyan' };
     case 'interrupt':
       return { icon: <AlertTriangle size={13} />, label: '主持人', tone: 'rose' };
+    case 'round-summary':
+      return { icon: <GitCompareArrows size={13} />, label: '观点总结', tone: 'gold' };
     case 'speak':
       return { icon: <MessageSquare size={13} />, label: '发言', tone: 'violet' };
     case 'system':
@@ -389,6 +392,28 @@ function EventMessage({ event, agents }: { event: DebateEvent; agents: RosterAge
   const [expanded, setExpanded] = useState(!isLong);
   const isHostMessage = event.type === 'interrupt';
   const isSystemMessage = event.type === 'system' || event.agentId === 'system';
+  const roundSummaries = useSessionStore((s) => s.session.roundSummaries);
+  const speeches = useSessionStore((s) => s.session.speeches);
+
+  // 每轮观点总结：digest + 各 Agent 一句话观点（可展开看完整发言）
+  if (event.type === 'round-summary') {
+    const round = event.payload.round;
+    const rs = roundSummaries.find((x) => x.round === round);
+    const title = rs?.title || (event.payload.subText ? event.payload.subText.split(' · ')[0] : '本轮总结');
+    const viewpoints = rs?.viewpoints ?? [];
+    const convergence = rs?.convergence;
+    return (
+      <RoundSummaryCard
+        title={title}
+        digest={event.payload.text || rs?.digest || ''}
+        convergence={convergence}
+        viewpoints={viewpoints}
+        round={round ?? 0}
+        speeches={speeches}
+        ts={event.ts}
+      />
+    );
+  }
 
   if (isSystemMessage) {
     return (
@@ -500,6 +525,116 @@ function EventMessage({ event, agents }: { event: DebateEvent; agents: RosterAge
           )}
         </div>
       </div>
+    </motion.article>
+  );
+}
+
+/** 每轮观点总结卡片：digest + 收敛度 + 各 Agent 观点（可展开看完整发言）。 */
+function RoundSummaryCard({
+  title,
+  digest,
+  convergence,
+  viewpoints,
+  round,
+  speeches,
+  ts,
+}: {
+  title: string;
+  digest: string;
+  convergence?: number;
+  viewpoints: RoundViewpoint[];
+  round: number;
+  speeches: Speech[];
+  ts: number;
+}) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+  // 取该轮每位 Agent 的完整原始发言，供展开兜底
+  const fullTextOf = (agentId: string) =>
+    speeches.find((s) => s.round === round && s.agentId === agentId)?.text || '';
+
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      className="group mx-1 my-1.5 rounded-lg border border-[var(--accent-gold)]/25 bg-[var(--accent-gold)]/6 px-3 py-2"
+    >
+      {/* 标题行 */}
+      <div className="flex items-center gap-2 text-[11px] text-[var(--accent-gold)]/80">
+        <GitCompareArrows size={13} className="shrink-0" />
+        <span className="font-medium">{title} · 观点总结</span>
+        <span className="font-mono text-[var(--text-muted)] ml-auto shrink-0">{formatTime(ts)}</span>
+      </div>
+
+      {/* 收敛度行（独立一行，避免窄屏挤压） */}
+      {typeof convergence === 'number' && (
+        <div className="mt-1.5 flex items-center gap-2 text-[10px] text-[var(--text-muted)]">
+          <span>收敛度</span>
+          <span className="relative inline-block w-24 h-1.5 rounded-full bg-[var(--bg-card-strong)] overflow-hidden align-middle">
+            <span
+              className="absolute left-0 top-0 h-full rounded-full bg-[var(--accent-gold)]"
+              style={{ width: `${Math.round(convergence * 100)}%` }}
+            />
+          </span>
+          <span className="font-mono text-[var(--accent-gold)]">{(convergence * 100).toFixed(0)}%</span>
+        </div>
+      )}
+
+      {/* 本轮总结 digest */}
+      {digest && (
+        <div className="mt-1.5 text-[12.5px] leading-[20px] text-[var(--text-primary)]/90 break-words">
+          <Markdown>{digest}</Markdown>
+        </div>
+      )}
+
+      {/* 各 Agent 观点：竖排，名字在上、观点在下，可展开看完整发言 */}
+      {viewpoints.length > 0 && (
+        <div className="mt-2 space-y-1.5">
+          {viewpoints.map((v) => {
+            const isExpanded = expanded === v.agentId;
+            const full = fullTextOf(v.agentId);
+            const isFallback = v.viewpoint.includes('未能提炼');
+            const canExpand = Boolean(full) && (v.viewpoint.endsWith('…') || isFallback);
+            return (
+              <div
+                key={v.agentId + v.name}
+                className="rounded-md bg-[var(--bg-card-soft)]/60 border border-[var(--border-soft)] px-2 py-1.5"
+              >
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span
+                    className="inline-block h-1.5 w-1.5 rounded-sm shrink-0"
+                    style={{ background: STANCE_META[v.stance].color }}
+                  />
+                  <span className="text-[11px] font-medium text-[var(--text-primary)]/70 truncate">
+                    {v.name}
+                  </span>
+                  <span className="text-[10px] text-[var(--text-muted)] shrink-0">
+                    {STANCE_META[v.stance].label}
+                  </span>
+                  {v.evidenceCount > 0 && (
+                    <span className="text-[10px] text-[var(--accent-cyan)]/70 shrink-0">
+                      · {v.evidenceCount} 证据
+                    </span>
+                  )}
+                </div>
+                <div className="text-[12.5px] leading-[19px] text-[var(--text-primary)]/85 break-words">
+                  {isExpanded && canExpand && isFallback ? full : v.viewpoint}
+                </div>
+                {canExpand && (
+                  <button
+                    type="button"
+                    onClick={() => setExpanded(isExpanded ? null : v.agentId)}
+                    className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] text-[var(--accent-gold)]/80 hover:text-[var(--accent-gold)] transition-colors"
+                  >
+                    {isExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                    {isExpanded ? '收起' : isFallback ? '查看原发言' : '展开全文'}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </motion.article>
   );
 }

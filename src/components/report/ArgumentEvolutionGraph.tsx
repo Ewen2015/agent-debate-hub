@@ -104,6 +104,9 @@ export function ArgumentEvolutionGraph({
         <Legend color={STANCE_FILL.con} label="反对" />
         <Legend color={STANCE_FILL.neutral} label="中立" />
         <span className="ml-1 hidden sm:inline">从左到右：观点按轮次演进</span>
+        {columns.length > 1 && (
+          <span className="ml-auto text-[var(--accent-cyan)]/70">← 横向滑动查看全部 {columns.length} 轮 →</span>
+        )}
       </div>
 
       {/* 三栏演进：横向滚动，每轮一列 */}
@@ -120,7 +123,7 @@ export function ArgumentEvolutionGraph({
 
 function RoundColumn({ column }: { column: Column }) {
   return (
-    <div className="w-[248px] shrink-0 flex flex-col gap-2 evo-col">
+    <div className="w-[260px] shrink-0 flex flex-col gap-2 evo-col">
       {/* 列头 */}
       <div className="flex items-center gap-2 px-1">
         <span className="font-display text-[13px] text-[var(--text-primary)]">{column.title}</span>
@@ -132,7 +135,7 @@ function RoundColumn({ column }: { column: Column }) {
         <div className="text-[9px] tracking-widish uppercase text-[var(--accent-gold)]/70 mb-1">
           本轮总结
         </div>
-        <div className="text-[12px] leading-[18px] text-[var(--text-primary)]/85">
+        <div className="text-[12px] leading-[19px] text-[var(--text-primary)]/85 break-words">
           {column.digest}
         </div>
       </div>
@@ -150,15 +153,13 @@ function RoundColumn({ column }: { column: Column }) {
 function ViewpointCard({ v }: { v: RoundViewpoint }) {
   const color = STANCE_FILL[v.stance] ?? STANCE_FILL.neutral;
   return (
-    <div
-      className="relative rounded-md bg-[var(--bg-card-soft)] border border-[var(--border-soft)] pl-3 pr-2.5 py-2 overflow-hidden"
-    >
+    <div className="relative rounded-md bg-[var(--bg-card-soft)] border border-[var(--border-soft)] pl-3 pr-2.5 py-2">
       <span
         className="absolute left-0 top-0 bottom-0 w-[3px]"
         style={{ background: color }}
       />
       <div className="flex items-center justify-between gap-2 mb-1">
-        <span className="text-[11px] font-medium text-[var(--text-primary)]/70 truncate">
+        <span className="text-[11px] font-medium text-[var(--text-primary)]/70 min-w-0 truncate">
           {v.name}
         </span>
         <span className="inline-flex items-center gap-1 text-[10px] text-[var(--text-muted)] shrink-0">
@@ -169,7 +170,7 @@ function ViewpointCard({ v }: { v: RoundViewpoint }) {
           {STANCE_LABEL[v.stance]}
         </span>
       </div>
-      <div className="text-[13px] leading-[19px] text-[var(--text-primary)]">
+      <div className="text-[13px] leading-[20px] text-[var(--text-primary)] break-words">
         {v.viewpoint}
       </div>
       {v.evidenceCount > 0 && (

@@ -8,6 +8,8 @@ import { Button } from '@/components/shared/Button';
 import { Chip } from '@/components/shared/Chip';
 import { resolvePersona } from '@/engine/MockLLM';
 import { ArgumentEvolutionGraph } from '@/components/report/ArgumentEvolutionGraph';
+import { ConvergenceCurve } from '@/components/report/ConvergenceCurve';
+import { Markdown } from '@/components/shared/Markdown';
 import type { FinalReport } from '@/types';
 
 export function ReportPanel() {
@@ -102,14 +104,14 @@ export function ReportPanel() {
       <div className="divider-x" />
 
       <Section title="TL;DR" index="01">
-        <p className="text-[12px] leading-relaxed text-[var(--text-primary)]/90 text-balance">
+        <Markdown className="text-[12px] leading-relaxed text-[var(--text-primary)]/90">
           {report.tldr}
-        </p>
+        </Markdown>
       </Section>
 
       <Section title="总结与评述" index="02">
         <div className="space-y-2 text-[12px] leading-relaxed text-[var(--text-primary)]/85">
-          <p>{summary}</p>
+          <Markdown>{summary}</Markdown>
           {evaluation.map((line, idx) => (
             <p key={idx} className="text-[12.5px] text-[var(--text-primary)]/80">
               • {line}
@@ -155,7 +157,7 @@ export function ReportPanel() {
                   className="w-full px-3 py-2 flex items-center gap-2 text-left"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-display text-[14px] text-[var(--text-primary)] truncate">
+                    <div className="font-display text-[14px] text-[var(--text-primary)] break-words">
                       {a.point}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
@@ -183,13 +185,13 @@ export function ReportPanel() {
                       {a.supporters.length > 0 && (
                         <div>
                           <div className="text-[10px] tracking-widish uppercase text-[var(--accent-gold)]/70 mb-1">支持</div>
-                          <div className="text-[12px] text-[var(--text-primary)]/75">{a.supporters.join('、')}</div>
+                          <div className="text-[12px] text-[var(--text-primary)]/75 break-words">{a.supporters.join('、')}</div>
                         </div>
                       )}
                       {a.opposers.length > 0 && (
                         <div>
                           <div className="text-[10px] tracking-widish uppercase text-[var(--accent-rose)]/70 mb-1">反对</div>
-                          <div className="text-[12px] text-[var(--text-primary)]/75">{a.opposers.join('、')}</div>
+                          <div className="text-[12px] text-[var(--text-primary)]/75 break-words">{a.opposers.join('、')}</div>
                         </div>
                       )}
                       {a.evidence.length > 0 && (
@@ -199,13 +201,13 @@ export function ReportPanel() {
                             {a.evidence.map((e) => (
                               <li
                                 key={e.url}
-                                className="text-[12px] pl-2 border-l border-[var(--accent-cyan)]/30"
+                                className="text-[12px] pl-2 border-l border-[var(--accent-cyan)]/30 break-words"
                               >
                                 <a
                                   href={e.url}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="text-[var(--accent-cyan)]/85 hover:text-[var(--accent-cyan)]"
+                                  className="text-[var(--accent-cyan)]/85 hover:text-[var(--accent-cyan)] break-words"
                                 >
                                   {e.title}
                                 </a>
@@ -234,7 +236,11 @@ export function ReportPanel() {
         />
       </Section>
 
-      <Section title="行动建议" index="06" count={report.actions.length}>
+      <Section title="议题收敛曲线" index="06">
+        <ConvergenceCurve rounds={report?.roundSummaries ?? session.roundSummaries} />
+      </Section>
+
+      <Section title="行动建议" index="07" count={report.actions.length}>
         <ol className="space-y-1.5 list-decimal list-inside">
           {report.actions.map((a, i) => (
             <li
