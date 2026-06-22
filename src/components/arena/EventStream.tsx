@@ -7,6 +7,7 @@ import {
 import { useSessionStore } from '@/store/sessionStore';
 import { useRosterStore } from '@/store/staticStores';
 import { resolvePersona } from '@/engine/MockLLM';
+import { normalizeText } from '@/engine/textUtils';
 import { Chip } from '@/components/shared/Chip';
 import type { DebateEvent } from '@/types';
 
@@ -37,7 +38,8 @@ const LONG = 90;
 function EventRow({ e }: { e: DebateEvent }) {
   const meta = typeMeta(e.type);
   const isSystem = e.agentId === 'system' || e.agentId === 'human';
-  const isLong = (e.payload.text?.length || 0) > LONG;
+  const text = normalizeText(e.payload.text || '');
+  const isLong = text.length > LONG;
   const [expanded, setExpanded] = useState(!isLong);
   const lookupName = (id: string) => {
     if (id === 'human') return '人类主持人';
@@ -73,7 +75,7 @@ function EventRow({ e }: { e: DebateEvent }) {
             <span className="text-[var(--text-primary)]/40 ml-1">· {e.payload.subText}</span>
           ) : null}
         </div>
-        {e.payload.text ? (
+        {text ? (
           <div
             className={`mt-0.5 ${
               isThink
@@ -83,7 +85,7 @@ function EventRow({ e }: { e: DebateEvent }) {
                 : 'text-[var(--text-primary)]/75'
             } ${!expanded && isLong ? 'line-clamp-2' : 'whitespace-pre-wrap'}`}
           >
-            {e.payload.text}
+            {text}
           </div>
         ) : null}
         {e.payload.sources && e.payload.sources.length > 0 && (

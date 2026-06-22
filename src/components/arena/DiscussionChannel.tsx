@@ -13,13 +13,12 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { pushHumanInterrupt } from '@/engine/DebateEngine';
 import { resolvePersona } from '@/engine/MockLLM';
 import { useRosterStore } from '@/store/staticStores';
 import { useSessionStore } from '@/store/sessionStore';
 import { Chip } from '@/components/shared/Chip';
+import { Markdown } from '@/components/shared/Markdown';
 import type { AgentStance, DebateEvent, RosterAgent, Source, Speech } from '@/types';
 
 type Tone = 'gold' | 'cyan' | 'rose' | 'violet' | 'neutral' | 'mute';
@@ -133,17 +132,24 @@ function Avatar({ agentId, agents, size = 36 }: { agentId: string; agents: Roste
     );
   }
 
+  // 主持人 / 系统统一用「渐变方块 + emoji」，与 Agent 头像保持一致
   const isHuman = agentId === 'human';
+  const gradient = isHuman
+    ? 'linear-gradient(135deg, #9F4A3C, #C77B5E)'
+    : 'linear-gradient(135deg, #4A4A52, #6B6B74)';
+  const glow = isHuman ? '#9F4A3C' : '#4A4A52';
+  const emoji = isHuman ? '🎙️' : '✦';
   return (
     <div
-      className={`flex-shrink-0 rounded-lg flex items-center justify-center font-display text-xs ${
-        isHuman
-          ? 'bg-[var(--accent-rose)]/14 text-[var(--accent-rose)]'
-          : 'bg-[var(--bg-card-strong)] text-[var(--text-muted)]'
-      }`}
-      style={{ width: size, height: size }}
+      className="flex-shrink-0 rounded-lg flex items-center justify-center text-white"
+      style={{
+        width: size,
+        height: size,
+        background: gradient,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 2px 8px -3px ' + glow,
+      }}
     >
-      {isHuman ? 'H' : 'S'}
+      <span style={{ fontSize: size * 0.42 }}>{emoji}</span>
     </div>
   );
 }
@@ -234,12 +240,12 @@ function ThoughtBundleMessage({ events, agents }: { events: DebateEvent[]; agent
   const thinking = events
     .filter((e) => e.type === 'think' && e.payload.text)
     .map((e) => e.payload.text!)
-    .join('\n\n');
+    .join('\n');
 
   const searchText = events
     .filter((e) => (e.type === 'search' || e.type === 'cite') && e.payload.text)
     .map((e) => e.payload.text!)
-    .join('\n\n');
+    .join('\n');
 
   const sources = (() => {
     const seen = new Set<string>();
@@ -280,17 +286,13 @@ function ThoughtBundleMessage({ events, agents }: { events: DebateEvent[]; agent
 
           {thinking && (
             <div className="mt-1.5 text-[12px] leading-[20px] text-[var(--text-secondary)]">
-              <div className="prose prose-invert m-0 break-words whitespace-pre-wrap">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{thinking}</ReactMarkdown>
-              </div>
+              <Markdown>{thinking}</Markdown>
             </div>
           )}
 
           {searchText && (
             <div className="mt-2 text-[12px] leading-[20px] text-[var(--text-secondary)]">
-              <div className="prose prose-invert m-0 break-words whitespace-pre-wrap">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{searchText}</ReactMarkdown>
-              </div>
+              <Markdown>{searchText}</Markdown>
               {sources.length > 0 && (
                 <div className="mt-1 text-[11px] text-[var(--text-muted)]">
                   来源
@@ -346,28 +348,7 @@ function SpeechMessage({
           </div>
 
           <div className="mt-2 text-[12px] leading-[20px] text-[var(--text-primary)]">
-            <div className="prose prose-invert m-0 break-words whitespace-pre-wrap">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  a: ({ node, ...props }) => (
-                    <a {...props} className="text-[var(--accent-cyan)] hover:text-[var(--text-primary)]" target="_blank" rel="noreferrer" />
-                  ),
-                  code: (props: any) => {
-                    const inline = Boolean(props.inline);
-                    const { node, inline: _inline, ...rest } = props;
-                    return (
-                      <code
-                        {...rest}
-                        className={`rounded px-1 py-0.5 ${inline ? 'bg-[var(--bg-card-strong)]' : 'bg-[var(--bg-soft)] block p-2'}`}
-                      />
-                    );
-                  },
-                }}
-              >
-                {speech.text}
-              </ReactMarkdown>
-            </div>
+            <Markdown>{speech.text}</Markdown>
           </div>
 
           {speech.sources && speech.sources.length > 0 && (
@@ -424,28 +405,7 @@ function EventMessage({ event, agents }: { event: DebateEvent; agents: RosterAge
           </div>
           {text && (
             <div className="mt-1 text-[12px] leading-[20px] text-[var(--text-secondary)]">
-              <div className="prose prose-invert m-0 break-words whitespace-pre-wrap">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    a: ({ node, ...props }) => (
-                      <a {...props} className="text-[var(--accent-cyan)] hover:text-[var(--text-primary)]" target="_blank" rel="noreferrer" />
-                    ),
-                    code: (props: any) => {
-                      const inline = Boolean(props.inline);
-                      const { node, inline: _inline, ...rest } = props;
-                      return (
-                        <code
-                          {...rest}
-                          className={`rounded px-1 py-0.5 ${inline ? 'bg-[var(--bg-card-strong)]' : 'bg-[var(--bg-soft)] block p-2'}`}
-                        />
-                      );
-                    },
-                  }}
-                >
-                  {text}
-                </ReactMarkdown>
-              </div>
+              <Markdown>{text}</Markdown>
             </div>
           )}
         </div>
@@ -461,40 +421,26 @@ function EventMessage({ event, agents }: { event: DebateEvent; agents: RosterAge
         transition={{ duration: 0.2 }}
         className="group flex gap-2.5 px-3 py-1.5"
       >
-        <Avatar agentId={event.agentId} agents={agents} size={30} />
+        <Avatar agentId={event.agentId} agents={agents} size={36} />
         <div className="min-w-0 flex-1">
-          <div className="rounded-2xl border border-[var(--accent-rose)]/20 bg-[var(--accent-rose)]/5 p-3">
-            <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)]">
-              <Chip tone={meta.tone} className="rounded-full" size="sm">
-                {meta.icon}
-                {meta.label}
+          <div
+            className="rounded-2xl border border-[var(--border-soft)] bg-[var(--bg-card)] p-3"
+            style={{ borderLeft: '3px solid var(--accent-rose)' }}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-display text-[13px] tracking-tightish text-[var(--text-primary)]">
+                {displayName(agents, event.agentId)}
+              </span>
+              <span className="font-mono text-[10px] text-[var(--text-muted)]">
+                {formatTime(event.ts)}
+              </span>
+              <Chip tone="rose" size="sm">
+                <AlertTriangle size={12} />
+                主持人
               </Chip>
-              <span>{displayName(agents, event.agentId)}</span>
-              <span className="font-mono">{formatTime(event.ts)}</span>
             </div>
-            <div className="mt-1.5 text-[12px] leading-[20px] text-[var(--text-primary)]">
-              <div className="prose prose-invert m-0 break-words whitespace-pre-wrap">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    a: ({ node, ...props }) => (
-                      <a {...props} className="text-[var(--accent-cyan)] hover:text-[var(--text-primary)]" target="_blank" rel="noreferrer" />
-                    ),
-                    code: (props: any) => {
-                      const inline = Boolean(props.inline);
-                      const { node, inline: _inline, ...rest } = props;
-                      return (
-                        <code
-                          {...rest}
-                          className={`rounded px-1 py-0.5 ${inline ? 'bg-[var(--bg-card-strong)]' : 'bg-[var(--bg-soft)] block p-2'}`}
-                        />
-                      );
-                    },
-                  }}
-                >
-                  {text}
-                </ReactMarkdown>
-              </div>
+            <div className="mt-2 text-[12px] leading-[20px] text-[var(--text-primary)]">
+              <Markdown>{text}</Markdown>
             </div>
           </div>
         </div>
@@ -523,7 +469,7 @@ function EventMessage({ event, agents }: { event: DebateEvent; agents: RosterAge
           </div>
 
           {text && (
-            <div
+            <Markdown
               className={`mt-1.5 text-[12px] leading-[20px] ${
                 event.type === 'think'
                   ? 'font-mono text-[var(--accent-gold)]/85'
@@ -532,29 +478,8 @@ function EventMessage({ event, agents }: { event: DebateEvent; agents: RosterAge
                   : 'text-[var(--text-muted)]'
               } ${!expanded && isLong ? 'line-clamp-2' : ''}`}
             >
-              <div className="prose prose-invert m-0 break-words whitespace-pre-wrap">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    a: ({ node, ...props }) => (
-                      <a {...props} className="text-[var(--accent-cyan)] hover:text-[var(--text-primary)]" target="_blank" rel="noreferrer" />
-                    ),
-                    code: (props: any) => {
-                      const inline = Boolean(props.inline);
-                      const { node, inline: _inline, ...rest } = props;
-                      return (
-                        <code
-                          {...rest}
-                          className={`rounded px-1 py-0.5 ${inline ? 'bg-[var(--bg-card-strong)]' : 'bg-[var(--bg-soft)] block p-2'}`}
-                        />
-                      );
-                    },
-                  }}
-                >
-                  {text}
-                </ReactMarkdown>
-              </div>
-            </div>
+              {text}
+            </Markdown>
           )}
 
           {event.payload.sources && event.payload.sources.length > 0 && (

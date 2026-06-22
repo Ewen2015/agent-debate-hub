@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp, Quote } from 'lucide-react';
 import { useSessionStore } from '@/store/sessionStore';
 import { useRosterStore } from '@/store/staticStores';
 import { resolvePersona } from '@/engine/MockLLM';
+import { normalizeText } from '@/engine/textUtils';
 import { Chip } from '@/components/shared/Chip';
 import type { AgentStance, Speech } from '@/types';
 
@@ -38,10 +39,10 @@ function SpeechCard({ sp, isLast }: { sp: Speech; isLast?: boolean }) {
       <header className="flex items-center gap-3 mb-2.5">
         {persona && (
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-primary)] font-display text-sm"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-display text-sm"
             style={{
               background: `linear-gradient(135deg, ${persona.gradient[0]}, ${persona.gradient[1]})`,
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 2px 8px -3px ' + persona.gradient[0],
             }}
           >
             {persona.emoji}
@@ -62,8 +63,8 @@ function SpeechCard({ sp, isLast }: { sp: Speech; isLast?: boolean }) {
           </div>
         </div>
       </header>
-      <div className="text-[13.5px] leading-relaxed text-[var(--text-primary)]/85">
-        {sp.text}
+      <div className="text-[13.5px] leading-relaxed text-[var(--text-primary)]/85 whitespace-pre-line">
+        {normalizeText(sp.text)}
       </div>
       {sp.sources && sp.sources.length > 0 && (
         <div className="mt-3">

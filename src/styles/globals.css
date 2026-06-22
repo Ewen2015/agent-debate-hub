@@ -9,12 +9,12 @@
   --bg-soft: #F1EDE6;
   --bg-card: rgba(255, 255, 255, 0.72);
   --bg-card-strong: rgba(255, 255, 255, 0.9);
-  --border-soft: rgba(26, 26, 26, 0.07);
-  --border-strong: rgba(26, 26, 26, 0.14);
+  --border-soft: rgba(26, 26, 26, 0.08);
+  --border-strong: rgba(26, 26, 26, 0.16);
   --text-primary: #1A1A1A;
-  --text-secondary: rgba(26, 26, 26, 0.66);
-  --text-muted: rgba(26, 26, 26, 0.42);
-  --text-soft: rgba(26, 26, 26, 0.62);
+  --text-secondary: rgba(26, 26, 26, 0.72);
+  --text-muted: rgba(26, 26, 26, 0.52);
+  --text-soft: rgba(26, 26, 26, 0.68);
   --accent-gold: #7A6A45;
   --accent-cyan: #2C5F5D;
   --accent-rose: #9F4A3C;
@@ -24,17 +24,17 @@
 }
 
 [data-theme='dark'] {
-  --bg-base: #14110E;
-  --bg-elev: #1C1814;
-  --bg-soft: #100E0B;
-  --bg-card: rgba(237, 232, 221, 0.035);
-  --bg-card-strong: rgba(237, 232, 221, 0.07);
-  --border-soft: rgba(237, 232, 221, 0.08);
-  --border-strong: rgba(237, 232, 221, 0.15);
+  --bg-base: #181613;
+  --bg-elev: #201D18;
+  --bg-soft: #14120F;
+  --bg-card: rgba(237, 232, 221, 0.045);
+  --bg-card-strong: rgba(237, 232, 221, 0.085);
+  --border-soft: rgba(237, 232, 221, 0.11);
+  --border-strong: rgba(237, 232, 221, 0.2);
   --text-primary: #EDE8DD;
-  --text-secondary: rgba(237, 232, 221, 0.66);
-  --text-muted: rgba(237, 232, 221, 0.42);
-  --text-soft: rgba(237, 232, 221, 0.6);
+  --text-secondary: rgba(237, 232, 221, 0.78);
+  --text-muted: rgba(237, 232, 221, 0.6);
+  --text-soft: rgba(237, 232, 221, 0.72);
   --accent-gold: #B8A878;
   --accent-cyan: #6FB3A8;
   --accent-rose: #D08877;
@@ -61,6 +61,7 @@ html, body, #root {
   color: var(--text-primary);
   font-family: 'Inter Tight', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
   font-feature-settings: 'cv11', 'ss01', 'ss03';
+  line-height: 1.6;
   transition: background-color 0.4s ease, color 0.4s ease;
 }
 
@@ -87,9 +88,13 @@ body::before {
   inset: 0;
   pointer-events: none;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.95 0 0 0 0 0.91 0 0 0 0 0.79 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  opacity: 0.4;
+  opacity: 0.12;
   z-index: 0;
   mix-blend-mode: overlay;
+}
+
+[data-theme='dark'] body::before {
+  opacity: 0.06;
 }
 
 #root {
@@ -251,5 +256,36 @@ input, textarea {
 .prose-invert h1, .prose-invert h2, .prose-invert h3 {
   font-weight: 600;
   margin: 0.6em 0 0.3em;
+  color: var(--text-primary);
+}
+
+/* 紧凑版排版：用于聊天气泡内的 LLM 文本，避免空行/段落边距撑高气泡 */
+.prose-compact {
+  font-size: 12px;
+  line-height: 1.65;
+}
+.prose-compact p {
+  margin: 0.25em 0;
+}
+.prose-compact p:first-child {
+  margin-top: 0;
+}
+.prose-compact p:last-child {
+  margin-bottom: 0;
+}
+.prose-compact ul, .prose-compact ol {
+  margin: 0.25em 0;
+  padding-left: 1.2em;
+}
+.prose-compact li {
+  margin: 0.1em 0;
+}
+.prose-compact strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.prose-compact h1, .prose-compact h2, .prose-compact h3 {
+  font-weight: 600;
+  margin: 0.4em 0 0.2em;
   color: var(--text-primary);
 }
