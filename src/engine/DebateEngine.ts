@@ -292,23 +292,28 @@ async function summarizeRound(
     return sim < 0.6;
   };
 
+  // 带超时的 chat 调用，避免总结阶段卡死整个辩论流程
   const parseOnce = async (): Promise<{ digest?: string; viewpoints?: Array<{ agentId?: string; viewpoint?: string }> } | null> => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 30000);
     try {
       const resp = await chat(cfg, [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
-      ]);
+      ], { signal: ctrl.signal });
       const raw = stripLLMArtifacts(resp.content || '');
       const m = raw.match(/\{[\s\S]*\}/);
       if (!m) return null;
       return JSON.parse(m[0]);
     } catch {
       return null;
+    } finally {
+      clearTimeout(timer);
     }
   };
 
   let parsed = await parseOnce();
-  // 质量不达标（有照搬或缺失）则带提示重试一次
+  // 质量不达标（有照搬或缺失）则带提示重试一次；重试前若已停止则放弃
   const needsRetry = (p: typeof parsed): boolean => {
     if (!p) return true;
     for (const sp of speeches) {
@@ -317,10 +322,11 @@ async function summarizeRound(
     }
     return false;
   };
-  if (needsRetry(parsed)) {
+  if (!isStopped() && needsRetry(parsed)) {
     const retry = await parseOnce();
     if (retry) parsed = retry;
   }
+  if (isStopped()) return fallback();
 
   if (!parsed) return fallback();
 
@@ -760,6 +766,8 @@ export const DebateEngine = {
       type: 'system',
       payload: { text: '全部轮次结束。可点击「生成报告」汇总结论。' },
     });
+    // 辩论结束，回到 idle，否则 UI 仍显示「进行中」
+    setPhase('idle');
   },
 
   pause() {
