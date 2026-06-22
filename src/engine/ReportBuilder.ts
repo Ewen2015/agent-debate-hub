@@ -158,7 +158,18 @@ const buildTemplateReport = (
     '将两处及以上关键分歧转化为可验证假设，并在下一次评审前完成验证方案。',
   ];
 
-  const tldr = `围绕「${question}」，讨论形成 ${consensus.length} 条共识，同时存在 ${disagreements.length} 处分歧，需要围绕风险与收益进一步验证。`;
+  const convRounds = roundSummaries.filter((rs) => typeof rs.convergence === 'number');
+  let convDesc = '';
+  if (convRounds.length >= 2) {
+    const initial = convRounds[0].convergence;
+    const final = convRounds[convRounds.length - 1].convergence;
+    const delta = final - initial;
+    const trend = delta > 0.08 ? '上升' : delta < -0.08 ? '下降' : '基本持平';
+    convDesc = `经 ${convRounds.length} 轮辩论，收敛度从 ${(initial * 100).toFixed(0)}% ${trend}至 ${(final * 100).toFixed(0)}%，`;
+  } else if (convRounds.length === 1) {
+    convDesc = `本轮收敛度为 ${(convRounds[0].convergence * 100).toFixed(0)}%，`;
+  }
+  const tldr = `围绕「${question}」，${convDesc}讨论形成 ${consensus.length} 条共识，同时存在 ${disagreements.length} 处分歧，需要围绕风险与收益进一步验证。`;
 
   return {
     sessionId,
@@ -192,6 +203,18 @@ const buildLLMReport = async (
     })
     .join('\n\n');
 
+  const convRounds = (base.roundSummaries || []).filter((rs) => typeof rs.convergence === 'number');
+  let convergenceInfo = '';
+  if (convRounds.length >= 2) {
+    const initial = convRounds[0].convergence;
+    const final = convRounds[convRounds.length - 1].convergence;
+    const delta = final - initial;
+    const trend = delta > 0.08 ? '上升' : delta < -0.08 ? '下降' : '基本持平';
+    convergenceInfo = `\n收敛数据：经 ${convRounds.length} 轮辩论，收敛度从 ${(initial * 100).toFixed(0)}% ${trend}至 ${(final * 100).toFixed(0)}%（0=发散，1=收敛）。\n`;
+  } else if (convRounds.length === 1) {
+    convergenceInfo = `\n收敛数据：本轮收敛度为 ${(convRounds[0].convergence * 100).toFixed(0)}%（0=发散，1=收敛）。\n`;
+  }
+
   const sysPrompt = `你是资深议事总结者，擅长将多方议论转化为可执行的报告。请根据下方多 Agent 辩论记录，输出结构化 JSON。`;
 
   const userPrompt = `议题：「${question}」
@@ -199,10 +222,10 @@ const buildLLMReport = async (
 以下是议事厅完整记录：
 
 ${transcript}
-
+${convergenceInfo}
 请输出严格 JSON（不要用 markdown 代码块包裹），结构：
 {
-  "tldr": "1-2 句 TL;DR 总结",
+  "tldr": "1-2 句 TL;DR 总结，须包含收敛度变化情况",
   "summary": "1-2 句对讨论内容与辩论观点的综合概括",
   "consensus": ["共识 1", "共识 2", ...],
   "disagreements": ["分歧 1（含支持方或反对方的观点）", ...],
@@ -211,11 +234,12 @@ ${transcript}
 }
 
 要求：
+- tldr 须简要概述本次辩论的收敛情况（收敛度变化趋势），并结合共识与分歧数量给出整体判断
 - summary 要直接概括讨论中的核心观点和各方立场，不要只写结构性说明
 - consensus 仅写全场公认无争议的结论
 - disagreements 必须包含具体观点差异和立场对立，不要泛泛而谈
 - evaluation 需给出简明评述，指出讨论亮点和风险
-- actions 要可落地、含时间窗口，如“1 周内”“下周”“3 个工作日内”
+- actions 要可落地、含时间窗口，如"1 周内""下周""3 个工作日内"
 - 避免常见模板语句，尽量贴合具体发言内容
 - 只输出 JSON，且不要解释过程`;
 

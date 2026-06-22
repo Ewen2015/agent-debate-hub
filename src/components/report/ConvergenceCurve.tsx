@@ -38,12 +38,11 @@ export function ConvergenceCurve({ rounds }: { rounds: RoundSummary[] }) {
   const areaD = `${pathD} L ${x(points.length - 1).toFixed(1)} ${(padTop + innerH).toFixed(1)} L ${x(0).toFixed(1)} ${(padTop + innerH).toFixed(1)} Z`;
 
   const gold = 'var(--accent-gold)';
-  const cyan = 'var(--accent-cyan)';
 
   return (
     <div className="rounded-lg border border-[var(--border-soft)] bg-[var(--bg-soft)] p-3">
       <div className="flex items-center justify-between mb-1.5 px-1">
-        <div className="flex items-center gap-3 text-[10px] text-[var(--text-muted)]">
+        <div className="flex items-center gap-3 text-[12px] text-[var(--text-primary)]/85">
           <span className="inline-flex items-center gap-1">
             <span className="inline-block h-2 w-2 rounded-sm" style={{ background: gold }} />
             收敛度
@@ -51,12 +50,12 @@ export function ConvergenceCurve({ rounds }: { rounds: RoundSummary[] }) {
           <span>0（发散）→ 1（收敛）</span>
         </div>
         {points.length > 1 && (
-          <span className="text-[10px] text-[var(--text-muted)]">
+          <span className="text-[12px] text-[var(--text-primary)]/85">
             趋势 {trendArrow(points[points.length - 1].value, points[0].value)}
           </span>
         )}
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet" style={{ fontFamily: 'inherit', fontSize: '12px' }}>
         {/* 网格线 0 / 0.5 / 1 */}
         {[0, 0.5, 1].map((g) => (
           <g key={g}>
@@ -69,7 +68,7 @@ export function ConvergenceCurve({ rounds }: { rounds: RoundSummary[] }) {
               strokeWidth={1}
               strokeDasharray={g === 0 || g === 1 ? '0' : '3 3'}
             />
-            <text x={padX - 6} y={y(g) + 3} textAnchor="end" fontSize="9" fill="var(--text-muted)">
+            <text x={padX - 6} y={y(g) + 3} textAnchor="end" fontSize="12" fill="var(--text-primary)" opacity={0.65}>
               {g.toFixed(1)}
             </text>
           </g>
@@ -82,10 +81,10 @@ export function ConvergenceCurve({ rounds }: { rounds: RoundSummary[] }) {
         {points.map((p, i) => (
           <g key={i}>
             <circle cx={x(i)} cy={y(p.value)} r={3.5} fill={gold} stroke="var(--bg-soft)" strokeWidth={1.5} />
-            <text x={x(i)} y={y(p.value) - 8} textAnchor="middle" fontSize="9.5" fontWeight="600" fill={cyan}>
+            <text x={x(i)} y={y(p.value) - 8} textAnchor="middle" fontSize="12" fontWeight="600" fill="var(--text-primary)">
               {(p.value * 100).toFixed(0)}%
             </text>
-            <text x={x(i)} y={H - 12} textAnchor="middle" fontSize="9" fill="var(--text-muted)">
+            <text x={x(i)} y={H - 12} textAnchor="middle" fontSize="12" fill="var(--text-primary)" opacity={0.65}>
               {p.label}
             </text>
           </g>
