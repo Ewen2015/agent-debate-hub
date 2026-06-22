@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, Copy, Check, ChevronDown, ChevronUp, FileText, Calendar } from 'lucide-react';
+import { Download, Copy, Check, ChevronDown, ChevronUp, FileText, Calendar, FileDown } from 'lucide-react';
 import { useSessionStore } from '@/store/sessionStore';
 import { useRosterStore } from '@/store/staticStores';
 import { ReportBuilder } from '@/engine/ReportBuilder';
 import { Button } from '@/components/shared/Button';
 import { Chip } from '@/components/shared/Chip';
 import { resolvePersona } from '@/engine/MockLLM';
+import { ArgumentEvolutionGraph } from '@/components/report/ArgumentEvolutionGraph';
 import type { FinalReport } from '@/types';
 
 export function ReportPanel() {
   const report = useSessionStore((s) => s.report);
   const session = useSessionStore((s) => s.session);
   const setReport = useSessionStore((s) => s.setReport);
+  const agents = useRosterStore((s) => s.agents);
 
   const [expandedArg, setExpandedArg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -78,6 +80,11 @@ export function ReportPanel() {
     a.download = `group-debate-report-${Date.now()}.md`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // 通过浏览器打印对话框导出 PDF（ReportPrintView 已挂载，打印样式表会隔离内容）
+  const handleExportPDF = () => {
+    window.print();
   };
 
   return (
@@ -219,7 +226,15 @@ export function ReportPanel() {
         </div>
       </Section>
 
-      <Section title="行动建议" index="05" count={report.actions.length}>
+      <Section title="辩论观点演进图" index="05">
+        <ArgumentEvolutionGraph
+          roundSummaries={report?.roundSummaries ?? session.roundSummaries}
+          speeches={session.speeches}
+          agents={agents}
+        />
+      </Section>
+
+      <Section title="行动建议" index="06" count={report.actions.length}>
         <ol className="space-y-1.5 list-decimal list-inside">
           {report.actions.map((a, i) => (
             <li
@@ -232,9 +247,17 @@ export function ReportPanel() {
         </ol>
       </Section>
 
-      <div className="flex gap-2 pt-2">
+      <div className="flex flex-wrap gap-2 pt-2">
         <Button
           variant="primary"
+          size="sm"
+          icon={<FileDown size={13} />}
+          onClick={handleExportPDF}
+        >
+          导出 PDF
+        </Button>
+        <Button
+          variant="secondary"
           size="sm"
           icon={<Download size={13} />}
           onClick={handleDownload}
@@ -250,6 +273,8 @@ export function ReportPanel() {
           {copied ? '已复制' : '复制'}
         </Button>
       </div>
+
+      {/* 打印专用视图由 App 层 portal 挂载到 body，避免被模态框裁剪 */}
     </div>
   );
 }

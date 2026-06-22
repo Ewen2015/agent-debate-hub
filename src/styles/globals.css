@@ -289,3 +289,98 @@ input, textarea {
   margin: 0.4em 0 0.2em;
   color: var(--text-primary);
 }
+
+/* ── 打印 / 导出 PDF ──────────────────────────────────────────
+ * 仅 #report-print-root 及其后代可见，其余全部隐藏。
+ * 打印根脱离模态框定位，铺满页面，白底黑字。
+ */
+@media print {
+  @page {
+    margin: 16mm;
+  }
+  body {
+    background: #ffffff !important;
+  }
+  body::before {
+    display: none !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  #report-print-root,
+  #report-print-root * {
+    visibility: visible;
+  }
+  #report-print-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    display: block !important;
+    color: #1a1a1a;
+    background: #ffffff;
+  }
+  #report-print-root .report-h1 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    color: #1a1a1a;
+  }
+  #report-print-root .report-meta {
+    font-size: 11px;
+    color: #555;
+    margin: 2px 0;
+  }
+  #report-print-root .report-h2 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 16px 0 6px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid #ddd;
+    color: #1a1a1a;
+    break-after: avoid;
+  }
+  #report-print-root .report-h3 {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 10px 0 4px;
+    color: #1a1a1a;
+  }
+  #report-print-root .report-p {
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 4px 0;
+    color: #1a1a1a;
+  }
+  #report-print-root .report-ol,
+  #report-print-root .report-ul {
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 4px 0 4px 20px;
+    color: #1a1a1a;
+  }
+  #report-print-root .report-arg {
+    margin: 8px 0;
+    break-inside: avoid;
+  }
+  #report-print-root svg {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  #report-print-root .report-arg,
+  #report-print-root li {
+    break-inside: avoid;
+  }
+  /* 演进图三栏横向滚动在打印时改为纵向堆叠，保证 PDF 完整可见 */
+  #report-print-root .evo-scroll {
+    overflow: visible !important;
+  }
+  #report-print-root .evo-row {
+    flex-direction: column !important;
+  }
+  #report-print-root .evo-col {
+    width: 100% !important;
+    break-inside: avoid;
+    margin-bottom: 8px;
+  }
+}

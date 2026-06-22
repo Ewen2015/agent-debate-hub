@@ -65,6 +65,24 @@ export interface Speech {
   ts: number;
 }
 
+export interface RoundViewpoint {
+  agentId: string;
+  name: string;
+  stance: AgentStance;
+  /** 一句话核心观点（≤30 字），由系统每轮总结生成 */
+  viewpoint: string;
+  evidenceCount: number;
+}
+
+export interface RoundSummary {
+  /** 0 = Brainstorm，1..N = Debate 轮次 */
+  round: number;
+  title: string;
+  /** 本轮观点演进 / 交锋的一句话总结 */
+  digest: string;
+  viewpoints: RoundViewpoint[];
+}
+
 export interface Session {
   id: string;
   title: string;
@@ -74,6 +92,8 @@ export interface Session {
   phase: Phase;
   events: DebateEvent[];
   speeches: Speech[];
+  /** 每轮系统总结的观点演进（按轮次生成） */
+  roundSummaries: RoundSummary[];
   currentRound: number;
   maxRounds: number;
   startedAt: number;
@@ -105,6 +125,8 @@ export interface FinalReport {
     opposers: string[];
     evidence: Source[];
   }[];
+  /** 每轮观点演进总结（透传自 session，供报告演进图直接消费） */
+  roundSummaries?: RoundSummary[];
 }
 
 export interface ProviderConfig {

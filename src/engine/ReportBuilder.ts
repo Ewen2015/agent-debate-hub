@@ -1,4 +1,4 @@
-import type { FinalReport, RosterAgent, Source, Speech } from '@/types';
+import type { FinalReport, RosterAgent, RoundSummary, Source, Speech } from '@/types';
 import { resolvePersona } from '@/engine/MockLLM';
 import { useRosterStore } from '@/store/staticStores';
 import { chat, type LLMConfig, type ChatMessage } from '@/engine/LLMClient';
@@ -66,6 +66,7 @@ const buildTemplateReport = (
   sessionId: string,
   question: string,
   speeches: Speech[],
+  roundSummaries: RoundSummary[] = [],
 ): FinalReport => {
   const debateSpeeches = speeches.filter((s) => s.round > 0);
   const groups = cluster(debateSpeeches);
@@ -169,6 +170,7 @@ const buildTemplateReport = (
     disagreements,
     actions,
     arguments: arguments_,
+    roundSummaries,
   };
 };
 
@@ -244,10 +246,10 @@ ${transcript}
 
 export const ReportBuilder = {
   async build(
-    args: { sessionId: string; question: string; speeches: Speech[] },
+    args: { sessionId: string; question: string; speeches: Speech[]; roundSummaries?: RoundSummary[] },
     cfg?: LLMConfig | null,
   ): Promise<FinalReport> {
-    const base = buildTemplateReport(args.sessionId, args.question, args.speeches);
+    const base = buildTemplateReport(args.sessionId, args.question, args.speeches, args.roundSummaries);
     if (!cfg || !cfg.apiKey) return base;
     try {
       return await buildLLMReport(base, args.question, args.speeches, cfg);
@@ -257,9 +259,9 @@ export const ReportBuilder = {
   },
 
   buildSync(
-    args: { sessionId: string; question: string; speeches: Speech[] },
+    args: { sessionId: string; question: string; speeches: Speech[]; roundSummaries?: RoundSummary[] },
   ): FinalReport {
-    return buildTemplateReport(args.sessionId, args.question, args.speeches);
+    return buildTemplateReport(args.sessionId, args.question, args.speeches, args.roundSummaries);
   },
 
   toMarkdown(report: FinalReport, question: string): string {
@@ -293,6 +295,17 @@ export const ReportBuilder = {
       }
       lines.push('');
     });
+    if (report.roundSummaries && report.roundSummaries.length) {
+      lines.push(`## 观点演进 (${report.roundSummaries.length})`);
+      report.roundSummaries.forEach((rs) => {
+        lines.push(`### ${rs.title}`);
+        lines.push(`- 本轮总结：${rs.digest}`);
+        rs.viewpoints.forEach((v) => {
+          lines.push(`- **${v.name}**（${v.stance}）：${v.viewpoint}${v.evidenceCount ? `（${v.evidenceCount} 证据）` : ''}`);
+        });
+        lines.push('');
+      });
+    }
     lines.push(`## 行动建议`);
     report.actions.forEach((a, i) => lines.push(`${i + 1}. ${a}`));
     lines.push('');

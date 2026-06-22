@@ -13,11 +13,12 @@
  */
 
 import { resolvePersona } from '@/engine/MockLLM';
+import { stripLLMArtifacts } from '@/engine/textUtils';
 import { chat, describeLLMError, LLMError, type ChatMessage, type LLMConfig } from '@/engine/LLMClient';
 import { resolveLLMConfig } from '@/engine/LLMConfig';
 import { useRosterStore } from '@/store/staticStores';
 import { useSessionStore } from '@/store/sessionStore';
-import type { DebateEvent, RosterAgent, Source, Speech } from '@/types';
+import type { DebateEvent, RosterAgent, RoundSummary, RoundViewpoint, Source, Speech } from '@/types';
 import { isSearchResolverConfigured, resolveSource } from '@/engine/SearchResolver';
 
 const uid = () => Math.random().toString(36).slice(2, 11);
@@ -190,23 +191,103 @@ const parseAnswer = (raw: string): { thinking: string; answer: string } => {
   const ansMatch = raw.match(/<answer>([\s\S]*?)<\/answer>/i);
   return {
     thinking: sanitizeThinking(thinkMatch?.[1].trim() || ''),
-    answer: ansMatch?.[1].trim() || raw.replace(/<thinking>[\s\S]*?<\/thinking>/i, '').replace(/<\/?answer>/gi, '').trim(),
+    // answer 同样需要剥离泄漏的 DSML / 工具调用标签，避免展示给用户
+    answer: sanitizeThinking(ansMatch?.[1].trim() || raw.replace(/<thinking>[\s\S]*?<\/thinking>/i, '').replace(/<\/?answer>/gi, '').trim()),
   };
 };
 
-/** 清理思考内容中的工具调用标签和 artifacts */
+/**
+ * 清理 LLM 输出中的工具调用标签和 artifacts。
+ * thinking 与 answer 共用同一套清洗逻辑，单一事实源在 stripLLMArtifacts。
+ */
 function sanitizeThinking(text: string): string {
-  return text
-    // 移除 DSML 工具调用标签（含全角竖线 ｜）
-    .replace(/<｜DSML｜\w+｜?[^>]*>([\s\S]*?)<\/｜DSML｜\w+｜?>/g, '')
-    .replace(/<\/?｜DSML｜[^>]*>/g, '')
-    // 移除残留的 tool_calls / function / parameter XML 标签
-    .replace(/<\/?(?:tool_calls|function_call|parameter|invoke|tool_call)[^>]*>/gi, '')
-    // 移除空的 <answer> 标签（防止泄露到 thinking）
-    .replace(/<\/?answer>/gi, '')
+  return stripLLMArtifacts(text)
     // 清理多余空行
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+const truncateViewpoint = (s: string, max = 30) => {
+  const t = stripLLMArtifacts(s || '').replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  return t.slice(0, max) + '…';
+};
+
+/**
+ * 每轮结束后由系统总结「本轮观点演进」。
+ * 复用主 LLM 配置做一次轻量 chat 调用，要求严格 JSON 输出；
+ * 解析失败则回退到截断式降级，保证不阻断辩论流程。
+ */
+async function summarizeRound(
+  round: number,
+  title: string,
+  speeches: Speech[],
+  agents: RosterAgent[],
+  cfg: LLMConfig,
+): Promise<RoundSummary> {
+  const nameOf = (id: string) => {
+    const a = agents.find((x) => x.id === id);
+    return a ? resolvePersona(a).name : 'Agent';
+  };
+
+  // 降级路径：无需 LLM 也能产出可用总结
+  const fallback = (): RoundSummary => ({
+    round,
+    title,
+    digest: `${title} · 共 ${speeches.length} 位发言者`,
+    viewpoints: speeches.map<RoundViewpoint>((sp) => ({
+      agentId: sp.agentId,
+      name: nameOf(sp.agentId),
+      stance: sp.stance,
+      viewpoint: truncateViewpoint(sp.text),
+      evidenceCount: sp.sources?.length ?? 0,
+    })),
+  });
+
+  if (speeches.length === 0) return fallback();
+
+  const transcripts = speeches
+    .map((sp) => `【${nameOf(sp.agentId)}（${sp.stance}）】${stripLLMArtifacts(sp.text)}`)
+    .join('\n\n');
+
+  const systemPrompt =
+    '你是严谨的辩论记录员。为每位发言者提炼一句不超过 30 字的核心观点，' +
+    '并给出一句话总结本轮观点的演进或交锋（不超过 40 字）。' +
+    '严格只输出 JSON，不要解释、不要 markdown 代码块。';
+  const userPrompt =
+    `议题：${useSessionStore.getState().session.question}\n\n本轮发言：\n${transcripts}\n\n` +
+    `请输出 JSON：{"digest":"本轮一句话总结","viewpoints":[{"agentId":"发言者ID","viewpoint":"核心观点"}]}。` +
+    `viewpoints 数量必须与发言者一致，agentId 必须从下列取：${speeches.map((s) => s.agentId).join('、')}。`;
+
+  try {
+    const resp = await chat(cfg, [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ]);
+    const raw = stripLLMArtifacts(resp.content || '');
+    // 容错抠 JSON
+    const m = raw.match(/\{[\s\S]*\}/);
+    if (!m) return fallback();
+    const parsed = JSON.parse(m[0]) as {
+      digest?: string;
+      viewpoints?: Array<{ agentId?: string; viewpoint?: string }>;
+    };
+    const viewpointMap = new Map<string, string>();
+    for (const v of parsed.viewpoints ?? []) {
+      if (v.agentId && v.viewpoint) viewpointMap.set(v.agentId, v.viewpoint);
+    }
+    const viewpoints: RoundViewpoint[] = speeches.map<RoundViewpoint>((sp) => ({
+      agentId: sp.agentId,
+      name: nameOf(sp.agentId),
+      stance: sp.stance,
+      viewpoint: truncateViewpoint(viewpointMap.get(sp.agentId) ?? sp.text),
+      evidenceCount: sp.sources?.length ?? 0,
+    }));
+    const digest = truncateViewpoint(parsed.digest || '', 40) || fallback().digest;
+    return { round, title, digest, viewpoints };
+  } catch {
+    return fallback();
+  }
 }
 
 // ── 多轮 function calling 循环：让 LLM 自己决定搜几次 ──
@@ -420,6 +501,18 @@ export const DebateEngine = {
       type: 'system',
       payload: { text: 'Brainstorm 阶段结束。点击「进入 Debate」开始对抗推演。' },
     });
+
+    // 系统总结 Brainstorm（round 0）观点演进
+    const brainstormSpeeches = useSessionStore.getState().session.speeches.filter((s) => s.round === 0);
+    if (brainstormSpeeches.length) {
+      try {
+        const rs = await summarizeRound(0, 'Brainstorm', brainstormSpeeches, agents, cfg);
+        useSessionStore.getState().pushRoundSummary(rs);
+      } catch {
+        // 静默降级
+      }
+    }
+
     setPhase('idle');
   },
 
@@ -568,6 +661,26 @@ export const DebateEngine = {
         payload: { text: `第 ${r} 轮结束。` },
       });
       await delay(400);
+
+      // 系统总结本轮观点演进
+      if (!isStopped()) {
+        const roundSpeeches = useSessionStore.getState().session.speeches.filter((s) => s.round === r);
+        if (roundSpeeches.length) {
+          pushEvent({
+            id: uid(),
+            ts: Date.now(),
+            agentId: 'system',
+            type: 'system',
+            payload: { text: `正在总结第 ${r} 轮观点演进…`, subText: '观点总结' },
+          });
+          try {
+            const rs = await summarizeRound(r, `第 ${r} 轮`, roundSpeeches, agents, cfg);
+            useSessionStore.getState().pushRoundSummary(rs);
+          } catch {
+            // 静默降级，不阻断后续轮次
+          }
+        }
+      }
     }
 
     pushEvent({

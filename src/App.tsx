@@ -10,6 +10,8 @@ import { QuestionWorkbench } from '@/components/question/QuestionWorkbench';
 import { RosterPanel } from '@/components/roster/RosterPanel';
 import { GatewayPanel } from '@/components/gateway/GatewayPanel';
 import { ReportPanel } from '@/components/report/ReportPanel';
+import { ReportModal } from '@/components/report/ReportModal';
+import { ReportPrintView } from '@/components/report/ReportPrintView';
 import { Drawer } from '@/components/shared/Drawer';
 
 export default function App() {
@@ -24,6 +26,8 @@ export default function App() {
 
   const phase = useSessionStore((s) => s.session.phase);
   const report = useSessionStore((s) => s.report);
+  const session = useSessionStore((s) => s.session);
+  const agents = useRosterStore((s) => s.agents);
 
   useEffect(() => {
     if (report && phase === 'report') {
@@ -76,16 +80,22 @@ export default function App() {
         <GatewayPanel />
       </Drawer>
 
-      <Drawer
-        open={reportDrawerOpen}
-        onClose={() => setReportDrawer(false)}
-        title="Final Report"
-        subtitle="统一结论报告"
-        side="right"
-        width="w-[40vw] min-w-[460px] max-w-[760px]"
-      >
+      {/* 报告改为居中模态预览，不再使用右侧抽屉 */}
+      <ReportModal open={reportDrawerOpen} onClose={() => setReportDrawer(false)}>
         <ReportPanel />
-      </Drawer>
+      </ReportModal>
+
+      {/* 打印专用视图：portal 挂到 body，屏幕隐藏，仅 window.print() 时可见 */}
+      {report &&
+        createPortal(
+          <ReportPrintView
+            report={report}
+            question={session.question}
+            speeches={session.speeches}
+            agents={agents}
+          />,
+          document.body,
+        )}
     </div>
   );
 }

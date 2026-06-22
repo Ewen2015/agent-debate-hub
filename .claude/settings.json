@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const c=require\\('@maxgraph/core'\\).Constants; const ks=Object.keys\\(c\\); console.log\\('SHAPE:', ks.filter\\(k=>/SHAPE/.test\\(k\\)\\).join\\(', '\\)\\); console.log\\('ROUNDED/FILL/STROKE/FONT/DASHED/ENDARROW:', ks.filter\\(k=>/ROUNDED|FILL|STROKE|FONT|DASHED|END_ARROW|WHITE_SPACE|ALIGN/.test\\(k\\)\\).join\\(', '\\)\\);\")",
+      "Bash(node -e \"const m=require\\('@maxgraph/core'\\); console.log\\('Constants type:', typeof m.Constants, m.Constants\\); console.log\\('candidates:', Object.keys\\(m\\).filter\\(k=>/Constant|STYLE|Default/i.test\\(k\\)\\).join\\(', '\\)\\);\")",
+      "Bash(node -e ' *)",
+      "Bash(grep -rnE \"insertVertex\\\\s*\\\\\\([^\\)]{0,120}\" node_modules/@maxgraph/core/lib/cjs/)",
+      "Bash(awk '/insertVertex\\\\\\(/{f=1} f{print} f&&/^    \\\\}/{c++; if\\(c>=1\\)exit}' node_modules/@maxgraph/core/lib/cjs/view/mixin/VertexMixin.js)",
+      "Bash(npx tsc *)",
+      "Bash(npx vite *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5179/)",
+      "Read(//tmp/**)",
+      "Bash(lsof -ti:5173,5174,5175,5179)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:5173/)",
+      "Bash(node --input-type=module -e ' *)",
+      "WebFetch(domain:www.volcengine.com)",
+      "WebSearch",
+      "Bash(env)",
+      "Bash(ARK_API_KEY=dummy_probe_key_only node scripts/test-ark-search.mjs)",
+      "Bash(git check-ignore *)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(umask 077)"
+    ]
+  }
+}

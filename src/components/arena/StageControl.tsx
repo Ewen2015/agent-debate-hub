@@ -58,7 +58,7 @@ export function StageControl() {
     setBusy('report');
     try {
       const r = await ReportBuilder.build(
-        { sessionId: session.id, question: session.question, speeches: session.speeches },
+        { sessionId: session.id, question: session.question, speeches: session.speeches, roundSummaries: session.roundSummaries },
         getLLMConfig(),
       );
       useSessionStore.getState().setReport(r);
