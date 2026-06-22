@@ -109,7 +109,12 @@ const resetMemory = () => {
   sessionMemory.delete(sessionId);
   getInterruptBuffer().length = 0;
   useSessionStore.getState().clearAgentMemory();
+  // 重置「未配置搜索 Key」一次性提示标记
+  searchKeyMissingNotified = false;
 };
+
+// 「未配置搜索 Key」每会话只提示一次，避免对话框冗余
+let searchKeyMissingNotified = false;
 
 /**
  * 把单个 Agent 的内存持久化到 sessionStore（localStorage）。
@@ -500,7 +505,7 @@ export const DebateEngine = {
         ts: Date.now(),
         agentId: agent.id,
         type: 'system',
-        payload: { text: `${persona.name} 开始分析议题（调用 ${cfg.model}）…`, subText: '调用 LLM' },
+        payload: { text: `${persona.name} 开始分析议题…`, subText: '思考中' },
       });
 
       try {
@@ -667,7 +672,7 @@ export const DebateEngine = {
           ts: Date.now(),
           agentId: agent.id,
           type: 'system',
-          payload: { text: `${persona.name} 第 ${r} 轮分析中（调用 ${cfg.model}）…`, subText: '调用 LLM' },
+          payload: { text: `${persona.name} 第 ${r} 轮分析中…`, subText: '思考中' },
         });
 
         try {
@@ -848,13 +853,17 @@ async function speak(
           '在输出 <answer> 之前，请尝试调用 web_search 获取最新资料，并在回答中引用来源。',
       });
     } else if (cfg.enableSearch && kind !== 'anthropic' && !isSearchResolverConfigured()) {
-      pushEvent({
-        id: uid(),
-        ts: Date.now(),
-        agentId: 'system',
-        type: 'system',
-        payload: { text: '未配置搜索 Key，跳过联网检索' },
-      });
+      // 每会话只提示一次，避免对话框被重复的系统信息刷屏
+      if (!searchKeyMissingNotified) {
+        searchKeyMissingNotified = true;
+        pushEvent({
+          id: uid(),
+          ts: Date.now(),
+          agentId: 'system',
+          type: 'system',
+          payload: { text: '未配置搜索 Key，本轮辩论将不联网检索（可在网关配置 Tavily/Serper）' },
+        });
+      }
     }
 
     const runOnce = async () =>

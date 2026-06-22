@@ -19,7 +19,9 @@
       "Bash(ARK_API_KEY=dummy_probe_key_only node scripts/test-ark-search.mjs)",
       "Bash(git check-ignore *)",
       "Bash(echo \"exit:$?\")",
-      "Bash(umask 077)"
+      "Bash(umask 077)",
+      "Bash(grep -rn \"调用 \\\\${cfg.model}\\\\|调用 \\\\${\\\\|分析中（调用\\\\|开始分析议题（调用\\\\|（调用 \" src/engine/DebateEngine.ts)",
+      "Bash(grep -rn \"调用 LLM\\\\|cfg.model\\\\|调用 \\\\${\" src/engine/DebateEngine.ts src/engine/LLMClient.ts)"
     ]
   }
 }
