@@ -592,9 +592,12 @@ function RoundSummaryCard({
         <div className="mt-2 space-y-1.5">
           {viewpoints.map((v) => {
             const isExpanded = expanded === v.agentId;
-            const full = fullTextOf(v.agentId);
+            const origSpeech = fullTextOf(v.agentId);
             const isFallback = v.viewpoint.includes('未能提炼');
-            const canExpand = Boolean(full) && (v.viewpoint.endsWith('…') || isFallback);
+            const isTruncated = v.viewpoint.endsWith('…') && v.viewpointFull;
+            // 被截断 → 展开看完整提炼观点；降级 → 展开看原发言
+            const canExpand = isTruncated || (isFallback && Boolean(origSpeech));
+            const expandedContent = isTruncated ? v.viewpointFull! : origSpeech;
             return (
               <div
                 key={v.agentId + v.name}
@@ -618,7 +621,7 @@ function RoundSummaryCard({
                   )}
                 </div>
                 <div className="text-[12.5px] leading-[19px] text-[var(--text-primary)]/85 break-words">
-                  {isExpanded && canExpand ? full : v.viewpoint}
+                  {isExpanded && canExpand ? expandedContent : v.viewpoint}
                 </div>
                 {canExpand && (
                   <button

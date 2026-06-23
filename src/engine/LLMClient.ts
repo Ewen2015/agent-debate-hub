@@ -131,6 +131,59 @@ const detectKind = (baseUrl: string): ProviderKind => {
   return 'openai';
 };
 
+/**
+ * 带超时 + 自动重试的 fetch。
+ * 国产模型/网关偶发「Failed to fetch」（网络抖动、连接 reset、长时间无响应），
+ * 单次失败不应让整个辩论丢发言。策略：
+ *  - 每次请求 90s 超时（辩论发言可能较长）
+ *  - 网络错误/超时自动重试最多 2 次，指数退避（1s、2s）
+ *  - 4xx 业务错误（如鉴权）不重试，直接抛
+ */
+const REQUEST_TIMEOUT_MS = 90_000;
+const MAX_RETRIES = 2;
+
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  opts: { signal?: AbortSignal } = {},
+): Promise<Response> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (opts.signal?.aborted) throw new Error('aborted');
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+    // 联动外部 signal（用户停止）
+    if (opts.signal) {
+      if (opts.signal.aborted) ctrl.abort();
+      else opts.signal.addEventListener('abort', () => ctrl.abort(), { once: true });
+    }
+    try {
+      const res = await fetch(url, { ...init, signal: ctrl.signal });
+      clearTimeout(timer);
+      // 4xx（除 429）是业务错误，不重试
+      if (res.status >= 400 && res.status < 500 && res.status !== 429) return res;
+      // 5xx / 429 可重试
+      if (res.status >= 500 || res.status === 429) {
+        if (attempt < MAX_RETRIES) {
+          await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+          continue;
+        }
+      }
+      return res;
+    } catch (e: any) {
+      clearTimeout(timer);
+      lastErr = e;
+      // aborted 由外部 signal 触发 → 不重试，直接抛
+      if (opts.signal?.aborted) throw e;
+      if (attempt < MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        continue;
+      }
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error('请求失败');
+}
+
 const domainOf = (url: string) => {
   try {
     return new URL(url).hostname.replace(/^www\./, '');
@@ -195,16 +248,15 @@ async function chatOpenAI(
     body.tool_choice = 'auto';
   }
 
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     method: 'POST',
-    signal: opts.signal,
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${cfg.apiKey}`,
       ...proxyHeaders,
     },
     body: JSON.stringify(body),
-  });
+  }, { signal: opts.signal });
 
   if (!res.ok) {
     const txt = await res.text();
@@ -323,9 +375,8 @@ async function chatAnthropic(
     ];
   }
 
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     method: 'POST',
-    signal: opts.signal,
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': cfg.apiKey,
@@ -334,7 +385,7 @@ async function chatAnthropic(
       ...proxyHeaders,
     },
     body: JSON.stringify(body),
-  });
+  }, { signal: opts.signal });
   if (!res.ok) {
     const txt = await res.text();
     throw new LLMError(res.status, txt, `Anthropic 调用失败: ${res.status}`);

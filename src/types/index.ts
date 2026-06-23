@@ -70,8 +70,10 @@ export interface RoundViewpoint {
   agentId: string;
   name: string;
   stance: AgentStance;
-  /** 一句话核心观点（≤30 字），由系统每轮总结生成 */
+  /** 一句话核心观点（≤40 字，可能截断），由系统每轮总结生成 */
   viewpoint: string;
+  /** 完整未截断的提炼观点，供展开查看 */
+  viewpointFull?: string;
   evidenceCount: number;
 }
 
