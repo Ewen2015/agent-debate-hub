@@ -26,9 +26,11 @@ export function StageControl() {
 
   const canStart = session.question.trim().length > 4 && session.phase === 'idle';
   const brainstormDone = session.phase === 'idle' && session.speeches.some((s) => s.round === 0);
+  const debateDone = session.phase === 'idle' && session.speeches.some((s) => s.round > 0);
   const isRunning = session.phase === 'brainstorm' || session.phase === 'debate';
   const llmCheck = validateLLMConfig();
   const llmReady = llmCheck.ok;
+  const [addRounds, setAddRounds] = useState(1);
 
   const handleStart = async () => {
     if (!canStart) return;
@@ -48,6 +50,15 @@ export function StageControl() {
     setBusy('debate');
     try {
       await DebateEngine.enterDebate();
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleContinueDebate = async () => {
+    setBusy('continue');
+    try {
+      await DebateEngine.continueDebate(addRounds);
     } finally {
       setBusy(null);
     }
@@ -88,6 +99,7 @@ export function StageControl() {
 
   const phaseLabel = (() => {
     if (session.phase === 'idle') {
+      if (debateDone) return `辩论已结束 · R${session.maxRounds} · 可追加或生成报告`;
       return brainstormDone ? 'Brainstorm 已就绪 · 可进入 Debate' : '待开始';
     }
     if (session.phase === 'brainstorm') {
@@ -164,6 +176,37 @@ export function StageControl() {
           <Chip tone="gold" size="sm">
             {session.speeches.filter((s) => s.round === 0).length} 条观点
           </Chip>
+        </>
+      )}
+
+      {debateDone && !brainstormDone && (
+        <>
+          <div className="flex items-center gap-1">
+            {[1, 2, 3].map((n) => (
+              <button
+                key={n}
+                onClick={() => setAddRounds(n)}
+                disabled={!!busy}
+                className={`w-6 h-6 rounded-md text-[11px] font-medium transition-all ${
+                  addRounds === n
+                    ? 'bg-[var(--accent-violet)] text-white'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]'
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+            <span className="text-[10px] text-[var(--text-muted)] ml-0.5">轮</span>
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            icon={busy === 'continue' ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+            onClick={handleContinueDebate}
+            disabled={!!busy || !llmReady}
+          >
+            追加辩论
+          </Button>
         </>
       )}
 

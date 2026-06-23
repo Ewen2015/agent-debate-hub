@@ -770,6 +770,183 @@ export const DebateEngine = {
     setPhase('idle');
   },
 
+  /**
+   * ContinueDebate：追加 N 轮辩论，从上次结束处续接。
+   * 不重置记忆，复用已有 Agent 历史 + interrupt buffer 中的公共信息。
+   */
+  async continueDebate(additionalRounds: number) {
+    const validation = validateLLMConfig();
+    if (!validation.ok) {
+      pushEvent({
+        id: uid(),
+        ts: Date.now(),
+        agentId: 'system',
+        type: 'system',
+        payload: { text: `❌ ${validation.error}`, subText: '配置错误' },
+      });
+      return;
+    }
+
+    const { session, setPhase, setCurrentRound, setMaxRounds } = useSessionStore.getState();
+    const prevMaxRounds = session.maxRounds;
+    const newMaxRounds = prevMaxRounds + additionalRounds;
+    setMaxRounds(newMaxRounds);
+    setPhase('debate');
+
+    // 恢复之前积累的记忆（页面刷新时仍可续接）
+    loadMemoryFromStore();
+
+    pushEvent({
+      id: uid(),
+      ts: Date.now(),
+      agentId: 'system',
+      type: 'system',
+      payload: { text: `追加辩论：第 ${prevMaxRounds + 1} - ${newMaxRounds} 轮（共 ${additionalRounds} 轮）。` },
+    });
+
+    const cfg = getLLMConfig()!;
+
+    for (let r = prevMaxRounds + 1; r <= newMaxRounds; r++) {
+      if (isStopped()) return;
+      await waitIfPaused();
+      setCurrentRound(r);
+
+      pushEvent({
+        id: uid(),
+        ts: Date.now(),
+        agentId: 'system',
+        type: 'system',
+        payload: { text: `── 第 ${r} / ${newMaxRounds} 轮 ──` },
+      });
+
+      const agents = useRosterStore.getState().agents;
+      for (let i = 0; i < agents.length; i++) {
+        if (isStopped()) return;
+        await waitIfPaused();
+        const agent = agents[i];
+        const persona = resolvePersona(agent);
+        const history = getMemoryForCurrentSession().get(agent.id) || [];
+        const recentSpeeches = useSessionStore
+          .getState()
+          .session.speeches.filter((s) => s.round === r - 1 && s.agentId !== agent.id)
+          .map(
+            (s) =>
+              `「${resolvePersona(agents.find((a) => a.id === s.agentId)!).name}」说：${
+                s.text
+              }${s.sources?.length ? `\n引用：${s.sources.map((x) => x.title).join('；')}` : ''}`,
+          )
+          .join('\n\n');
+
+        const interruptNote =
+          getInterruptBuffer().length
+            ? `\n\n人类主持人最新指令：${getInterruptBuffer()[getInterruptBuffer().length - 1]}`
+            : '';
+
+        const userMsg: ChatMessage = {
+          role: 'user',
+          content: `进入第 ${r} 轮。${
+            recentSpeeches ? `\n\n上一轮他人发言：\n${recentSpeeches}` : '你是本轮第一位发言者。'
+          }${interruptNote}\n\n请基于你的人设，先在 <thinking> 里深度思考（至少 200 字），再用 <answer> 给出正式发言（不超过 250 字）。发言中必须回应前文某一 Agent 的具体观点。`,
+        };
+        history.push(userMsg);
+
+        setAgentStatus(agent.id, 'thinking');
+        pushEvent({
+          id: uid(),
+          ts: Date.now(),
+          agentId: agent.id,
+          type: 'system',
+          payload: { text: `${persona.name} 第 ${r} 轮分析中…`, subText: '思考中' },
+        });
+
+        try {
+          const result = await speak(agent, history, cfg, r);
+          const { thinking, answer } = parseAnswer(result.final);
+          if (thinking) {
+            pushEvent({
+              id: uid(),
+              ts: Date.now(),
+              agentId: agent.id,
+              type: 'think',
+              payload: { text: thinking, subText: '思考' },
+            });
+          }
+          const speech: Speech = {
+            id: uid(),
+            round: r,
+            agentId: agent.id,
+            stance: persona.stance,
+            text: answer,
+            sources: result.sources,
+            ts: Date.now(),
+          };
+          useSessionStore.getState().pushSpeech(speech);
+          pushEvent({
+            id: uid(),
+            ts: Date.now(),
+            agentId: agent.id,
+            type: 'speak',
+            payload: { text: answer, subText: `${persona.name} 发言`, sources: result.sources },
+          });
+          history.push({ role: 'assistant', content: result.final });
+          persistAgentMemory(agent.id);
+        } catch (e: any) {
+          pushEvent({
+            id: uid(),
+            ts: Date.now(),
+            agentId: agent.id,
+            type: 'system',
+            payload: { text: `${persona.name} 失败：${e?.message || '未知错误'}`, subText: '错误' },
+          });
+        }
+        setAgentStatus(agent.id, 'idle');
+      }
+
+      if (isStopped()) return;
+      pushEvent({
+        id: uid(),
+        ts: Date.now(),
+        agentId: 'system',
+        type: 'system',
+        payload: { text: `第 ${r} 轮结束。` },
+      });
+      await delay(400);
+
+      if (!isStopped()) {
+        const allSpeeches = useSessionStore.getState().session.speeches;
+        const roundSpeeches = allSpeeches.filter((s) => s.round === r);
+        const prevRound = allSpeeches.filter((s) => s.round === r - 1);
+        if (roundSpeeches.length) {
+          try {
+            const rs = await summarizeRound(r, `第 ${r} 轮`, roundSpeeches, agents, cfg, prevRound);
+            useSessionStore.getState().pushRoundSummary(rs);
+            pushEvent({
+              id: uid(),
+              ts: Date.now(),
+              agentId: 'system',
+              type: 'round-summary',
+              payload: { text: rs.digest, subText: `${rs.title} · 收敛度 ${(rs.convergence * 100).toFixed(0)}%`, round: r },
+            });
+          } catch {
+            // 静默降级
+          }
+        }
+      }
+    }
+
+    // 清空已消费的 interrupt buffer
+    getInterruptBuffer().length = 0;
+
+    pushEvent({
+      id: uid(),
+      ts: Date.now(),
+      agentId: 'system',
+      type: 'system',
+      payload: { text: `追加辩论结束（第 ${newMaxRounds} 轮）。可点击「生成报告」汇总结论。` },
+    });
+    setPhase('idle');
+  },
+
   pause() {
     useSessionStore.getState().setPaused(true);
   },

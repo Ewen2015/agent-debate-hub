@@ -648,6 +648,9 @@ export function DiscussionChannel() {
   const channelName = channelNameFromQuestion(session.question);
   const isLive = session.phase === 'brainstorm' || session.phase === 'debate';
   const isPaused = isLive && session.paused;
+  // 辩论结束后仍允许输入公共信息（有发言记录且处于 idle）
+  const hasDebateHistory = session.speeches.length > 0;
+  const canInput = isLive || (session.phase === 'idle' && hasDebateHistory);
   const phaseLabel =
     session.phase === 'brainstorm'
       ? 'Brainstorm'
@@ -684,7 +687,7 @@ export function DiscussionChannel() {
 
   const submit = () => {
     const text = draft.trim();
-    if (!text || !isLive || isPaused) return;
+    if (!text || !canInput || isPaused) return;
     pushHumanInterrupt(text);
     setDraft('');
   };
@@ -751,7 +754,7 @@ export function DiscussionChannel() {
               <button
                 type="button"
                 onClick={submit}
-                disabled={!draft.trim() || !isLive || isPaused}
+                disabled={!draft.trim() || !canInput || isPaused}
                 title="发送介入"
                 className="inline-flex h-10 items-center rounded-xl bg-[var(--accent-violet)] px-3.5 text-[12px] font-medium text-white transition-all hover:brightness-110 hover:shadow-[0_2px_8px_-2px_rgba(91,77,255,0.5)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:shadow-none"
               >
