@@ -228,13 +228,6 @@ function sanitizeThinking(text: string): string {
     .trim();
 }
 
-/** 截断到指定字数，超出加省略号。 */
-const truncateViewpoint = (s: string, max = 40) => {
-  const t = stripLLMArtifacts(s || '').replace(/\s+/g, ' ').trim();
-  if (t.length <= max) return t;
-  return t.slice(0, max) + '…';
-};
-
 /**
  * 每轮结束后由系统总结「本轮观点演进」。
  * 复用主 LLM 配置做一次轻量 chat 调用，要求严格 JSON 输出。
@@ -423,7 +416,8 @@ async function summarizeRound(
       agentId: sp.agentId,
       name,
       stance: sp.stance,
-      viewpoint: truncateViewpoint(fullVp, 40),
+      // viewpoint 即完整提炼观点（不再截断）；viewpointFull 保留同值，供历史数据/报告演变图展开兼容
+      viewpoint: fullVp,
       viewpointFull: fullVp,
       evidenceCount: sp.sources?.length ?? 0,
     };
