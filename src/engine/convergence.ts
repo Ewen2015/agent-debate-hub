@@ -104,7 +104,8 @@ function lexicalCohesion(speeches: Speech[]): number {
   return pairs ? clamp01(sum / pairs) : 0;
 }
 
-/** 分量 3：认同倾向 = 认同词 / (认同词 + 反对词)。 */
+/** 分量 3：认同倾向 = 认同词 / (认同词 + 反对词)。
+ *  高共识时非线性加速 → 当认同远超反对时快速趋近 1。 */
 function agreementTendency(speeches: Speech[]): number {
   const text = speeches.map((s) => s.text).join('');
   let agree = 0;
@@ -117,8 +118,13 @@ function agreementTendency(speeches: Speech[]): number {
     const c = countOccurrences(text, w);
     if (c) disagree += c;
   }
-  if (agree + disagree === 0) return 0.5; // 无明确信号，取中性
-  return clamp01((agree + 1) / (agree + disagree + 2));
+  if (agree + disagree === 0) return 0.3; // 无明确信号，偏低
+  const ratio = (agree + 1) / (agree + disagree + 2);
+  // 非线性加速：ratio > 0.6 后加速趋近 1
+  if (ratio > 0.6) {
+    return clamp01(0.6 + (ratio - 0.6) * 2.5);
+  }
+  return clamp01(ratio);
 }
 
 /** 分量 4：轮间稳定 = 本轮与上一轮合并词集 Jaccard。 */
@@ -141,10 +147,10 @@ function countOccurrences(haystack: string, needle: string): number {
 }
 
 const WEIGHTS = {
-  stance: 0.3,
-  cohesion: 0.3,
-  agreement: 0.25,
-  stability: 0.15,
+  stance: 0.10,
+  cohesion: 0.20,
+  agreement: 0.50,
+  stability: 0.20,
 };
 
 export interface ConvergenceBreakdown {
@@ -176,8 +182,11 @@ export function computeConvergence(
       iStability * WEIGHTS.stability,
   );
 
+  // 共识加成：当认同倾向很高且轮间稳定时，额外加分
+  const consensusBoost = aTendency > 0.75 && iStability > 0.3 ? (aTendency - 0.75) * 0.3 : 0;
+
   return {
-    score,
+    score: clamp01(score + consensusBoost),
     stanceAlignment: sAlign,
     lexicalCohesion: lCohesion,
     agreementTendency: aTendency,

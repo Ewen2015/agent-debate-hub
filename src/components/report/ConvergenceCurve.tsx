@@ -108,8 +108,8 @@ export function ConvergenceCurve({ rounds }: { rounds?: RoundSummary[] }) {
             <text x={x(i)} y={y(p.value) - 7} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--text-primary)">
               {(p.value * 100).toFixed(0)}%
             </text>
-            <text x={x(i)} y={H - 10} textAnchor="middle" fontSize="8.5" fill="var(--text-primary)" opacity={0.65}>
-              {p.label}
+            <text x={x(i)} y={H - 10} textAnchor="middle" fontSize="9" fill="var(--text-primary)" opacity={0.65}>
+              {i + 1}
             </text>
           </g>
         ))}

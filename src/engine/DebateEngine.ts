@@ -186,7 +186,7 @@ ${stanceDesc}
    - 从你的角色视角寻找论据或反例
    - 权衡证据的强弱
    - 决定你的发言策略
-   然后在 <answer> 标签中输出正式发言正文（不超过 250 字）。
+   然后在 <answer> 标签中输出正式发言正文（不超过 600 字）。
 
 2. **交叉引用**：发言中必须显式回应前文某一 Agent 的具体观点，使用「回应 @[名字] 关于「...」的观点」格式。如果你是首位发言者，则阐述你的核心论点。
 
@@ -203,7 +203,7 @@ ${stanceDesc}
 你的真实思考过程（至少 200 字，展示你的推理链条）。
 </thinking>
 <answer>
-你的正式发言（不超过 250 字）。
+你的正式发言（不超过 600 字）。
 </answer>`;
 };
 
@@ -600,7 +600,7 @@ export const DebateEngine = {
           role: 'user',
           content: `议题：「${session.question}」${
             session.background ? `\n\n背景资料：${session.background}` : ''
-          }\n\n请基于你的人设，先在 <thinking> 里深度思考（至少 200 字），再用 <answer> 给出 1-2 个发散观点（不超过 250 字）。不要重复前面 Agent 的视角。`,
+          }\n\n请基于你的人设，先在 <thinking> 里深度思考（至少 200 字），再用 <answer> 给出 1-2 个发散观点（不超过 600 字）。不要重复前面 Agent 的视角。`,
         },
       ];
       getMemoryForCurrentSession().set(agent.id, history);
@@ -774,7 +774,7 @@ export const DebateEngine = {
           role: 'user',
           content: `进入第 ${r} 轮。${
             recentSpeeches ? `\n\n上一轮他人发言：\n${recentSpeeches}` : '你是本轮第一位发言者。'
-          }${interruptNote}\n\n请按你的角色立场：\n- 在 <thinking> 中深度反驳或推进（至少 200 字，必须显式回应对方至少一个观点）\n- 在 <answer> 中输出 250 字内的正式发言\n- 必要时调用 web_search 检索最新数据/案例\n- 不要复读你之前的论点`,
+          }${interruptNote}\n\n请按你的角色立场：\n- 在 <thinking> 中深度反驳或推进（至少 200 字，必须显式回应对方至少一个观点）\n- 在 <answer> 中输出 600 字内的正式发言\n- 必要时调用 web_search 检索最新数据/案例\n- 不要复读你之前的论点`,
         };
         history.push(userMsg);
 
@@ -960,7 +960,7 @@ export const DebateEngine = {
           role: 'user',
           content: `进入第 ${r} 轮。${
             recentSpeeches ? `\n\n上一轮他人发言：\n${recentSpeeches}` : '你是本轮第一位发言者。'
-          }${interruptNote}\n\n请基于你的人设，先在 <thinking> 里深度思考（至少 200 字），再用 <answer> 给出正式发言（不超过 250 字）。发言中必须回应前文某一 Agent 的具体观点。`,
+          }${interruptNote}\n\n请基于你的人设，先在 <thinking> 里深度思考（至少 200 字），再用 <answer> 给出正式发言（不超过 600 字）。发言中必须回应前文某一 Agent 的具体观点。`,
         };
         history.push(userMsg);
 

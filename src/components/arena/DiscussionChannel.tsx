@@ -601,8 +601,8 @@ function RoundSummaryCard({
 
       {/* 本轮总结 digest */}
       {digest && (
-        <div className="mt-1.5 text-[12.5px] leading-[20px] text-[var(--text-primary)]/90 break-words">
-          <Markdown>{digest}</Markdown>
+        <div className="mt-1.5 text-[12.5px] leading-[20px] text-[var(--text-primary)]/90 break-words whitespace-pre-wrap">
+          {digest}
         </div>
       )}
 

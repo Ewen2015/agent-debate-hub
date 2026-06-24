@@ -55,14 +55,19 @@ export function QuestionWorkbench() {
         <input
           type="number"
           min={1}
-          max={10}
+          max={100}
           value={maxRounds}
           disabled={isLive}
           onChange={(e) => {
-            const n = Math.max(1, Math.min(10, Number(e.target.value) || 1));
+            const raw = e.target.value;
+            if (raw === '') { setMaxRounds(0 as any); return; }
+            const n = Math.max(1, Math.min(100, Number(raw) || 1));
             setMaxRounds(n);
           }}
-          title="手动输入轮数（1-10）"
+          onBlur={() => {
+            if (!maxRounds || maxRounds < 1) setMaxRounds(1);
+          }}
+          title="手动输入轮数（1-100）"
           className={`w-11 h-6 rounded-md text-[11px] font-medium text-center bg-[var(--bg-card)] border border-[var(--border-soft)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold)]/50 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
             isLive ? 'opacity-40 cursor-not-allowed' : ''
           }`}
