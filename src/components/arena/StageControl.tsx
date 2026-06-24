@@ -31,7 +31,7 @@ export function StageControl() {
   const isRunning = session.phase === 'brainstorm' || session.phase === 'debate';
   const llmCheck = validateLLMConfig();
   const llmReady = llmCheck.ok;
-  const [addRounds, setAddRounds] = useState(1);
+  const [addRounds, setAddRounds] = useState(10);
 
   const handleStart = async () => {
     if (!canStart) return;
@@ -165,30 +165,32 @@ export function StageControl() {
           >
             重新
           </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            icon={busy === 'debate' ? <Loader2 size={14} className="animate-spin" /> : <Swords size={14} />}
-            onClick={handleEnterDebate}
-            disabled={!!busy || !llmReady}
-          >
-            Debate
-          </Button>
+          {!debateDone && (
+            <Button
+              variant="primary"
+              size="sm"
+              icon={busy === 'debate' ? <Loader2 size={14} className="animate-spin" /> : <Swords size={14} />}
+              onClick={handleEnterDebate}
+              disabled={!!busy || !llmReady}
+            >
+              Debate
+            </Button>
+          )}
           <Chip tone="gold" size="sm">
             {session.speeches.filter((s) => s.round === 0).length} 条观点
           </Chip>
         </>
       )}
 
-      {debateDone && !brainstormDone && (
+      {debateDone && (
         <>
-          <div className="flex items-center gap-1">
-            {[1, 2, 3].map((n) => (
+          <div className="flex items-center gap-1.5" title="追加轮数">
+            {[10, 20].map((n) => (
               <button
                 key={n}
                 onClick={() => setAddRounds(n)}
                 disabled={!!busy}
-                className={`w-6 h-6 rounded-md text-[11px] font-medium transition-all ${
+                className={`w-7 h-6 rounded-md text-[11px] font-medium transition-all ${
                   addRounds === n
                     ? 'bg-[var(--accent-violet)] text-white'
                     : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]'
@@ -197,7 +199,25 @@ export function StageControl() {
                 {n}
               </button>
             ))}
-            <span className="text-[10px] text-[var(--text-muted)] ml-0.5">轮</span>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={addRounds}
+              disabled={!!busy}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === '') { setAddRounds(0); return; }
+                const n = Math.max(1, Math.min(100, Number(raw) || 1));
+                setAddRounds(n);
+              }}
+              onBlur={() => {
+                if (!addRounds || addRounds < 1) setAddRounds(1);
+              }}
+              title="手动输入追加轮数（1-100）"
+              className="w-11 h-6 rounded-md text-[11px] font-medium text-center bg-[var(--bg-card)] border border-[var(--border-soft)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold)]/50 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+            <span className="text-[10px] text-[var(--text-muted)]">轮</span>
           </div>
           <Button
             variant="primary"

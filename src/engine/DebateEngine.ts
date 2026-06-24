@@ -896,7 +896,9 @@ export const DebateEngine = {
     }
 
     const { session, setPhase, setCurrentRound, setMaxRounds } = useSessionStore.getState();
-    const prevMaxRounds = session.maxRounds;
+    // 基于实际已完成的最大轮次续编，避免 maxRounds 被异常改写（如清空输入框）导致从头计数
+    const maxRoundDone = session.speeches.reduce((m, s) => Math.max(m, s.round), 0);
+    const prevMaxRounds = Math.max(session.maxRounds, maxRoundDone);
     const newMaxRounds = prevMaxRounds + additionalRounds;
     setMaxRounds(newMaxRounds);
     setPhase('debate');
