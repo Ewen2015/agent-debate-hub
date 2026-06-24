@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, Copy, Check, ChevronDown, ChevronUp, FileText, Calendar, FileDown } from 'lucide-react';
+import { Download, Copy, Check, ChevronDown, ChevronUp, FileText, Calendar, FileDown, Code2 } from 'lucide-react';
 import { useSessionStore } from '@/store/sessionStore';
 import { useRosterStore } from '@/store/staticStores';
 import { ReportBuilder } from '@/engine/ReportBuilder';
@@ -80,6 +80,17 @@ export function ReportPanel() {
     const a = document.createElement('a');
     a.href = url;
     a.download = `group-debate-report-${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadHTML = () => {
+    const html = ReportBuilder.toHTML(report, session.question);
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `group-debate-report-${Date.now()}.html`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -228,19 +239,11 @@ export function ReportPanel() {
         </div>
       </Section>
 
-      <Section title="辩论观点演进图" index="05">
-        <ArgumentEvolutionGraph
-          roundSummaries={report?.roundSummaries ?? session.roundSummaries}
-          speeches={session.speeches}
-          agents={agents}
-        />
-      </Section>
-
-      <Section title="议题收敛曲线" index="06">
+      <Section title="议题收敛曲线" index="05">
         <ConvergenceCurve rounds={report?.roundSummaries ?? session.roundSummaries} />
       </Section>
 
-      <Section title="行动建议" index="07" count={report.actions.length}>
+      <Section title="行动建议" index="06" count={report.actions.length}>
         <ol className="space-y-1.5 list-decimal list-inside">
           {report.actions.map((a, i) => (
             <li
@@ -251,6 +254,14 @@ export function ReportPanel() {
             </li>
           ))}
         </ol>
+      </Section>
+
+      <Section title="辩论观点演进图" index="07">
+        <ArgumentEvolutionGraph
+          roundSummaries={report?.roundSummaries ?? session.roundSummaries}
+          speeches={session.speeches}
+          agents={agents}
+        />
       </Section>
 
       <div className="flex flex-wrap gap-2 pt-2">
@@ -269,6 +280,14 @@ export function ReportPanel() {
           onClick={handleDownload}
         >
           导出 Markdown
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<Code2 size={13} />}
+          onClick={handleDownloadHTML}
+        >
+          导出 HTML
         </Button>
         <Button
           variant="secondary"

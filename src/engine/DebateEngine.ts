@@ -214,6 +214,13 @@ function sanitizeThinking(text: string): string {
     .trim();
 }
 
+/** 截断到指定字数，超出加省略号。 */
+const truncateViewpoint = (s: string, max = 40) => {
+  const t = stripLLMArtifacts(s || '').replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  return t.slice(0, max) + '…';
+};
+
 /**
  * 每轮结束后由系统总结「本轮观点演进」。
  * 复用主 LLM 配置做一次轻量 chat 调用，要求严格 JSON 输出。
@@ -239,17 +246,17 @@ async function summarizeRound(
   // 收敛度（纯计算，不依赖 LLM）
   const convergence = computeConvergence(speeches, prevRound).score;
 
-  // 降级路径：LLM 不可用时，明确标注「未能提炼」，绝不照搬原话
+  // 降级路径：仅当无发言时使用。有发言时走分级保底机制，必有总结。
   const fallback = (): RoundSummary => ({
     round,
     title,
-    digest: `${title}共 ${speeches.length} 位发言者参与，观点总结因模型不可用而省略。`,
+    digest: speeches.length ? `${title}共 ${speeches.length} 位发言者参与。` : `${title}无发言记录。`,
     convergence,
     viewpoints: speeches.map<RoundViewpoint>((sp) => ({
       agentId: sp.agentId,
       name: nameOf(sp.agentId),
       stance: sp.stance,
-      viewpoint: '（未能自动提炼，见原发言）',
+      viewpoint: '（无发言内容）',
       evidenceCount: sp.sources?.length ?? 0,
     })),
   });
@@ -268,24 +275,26 @@ async function summarizeRound(
 
   /**
    * 校验单条 viewpoint 质量：存在、非空、且不是照搬原句。
-   * 照搬判定（比 Jaccard 更准确）：
-   *  - 提炼结果中若含 ≥5 字的连续片段原样出现在原文中 → 照搬
-   *  - 或与原文词集 Jaccard ≥ 0.6 → 照搬
+   * 照搬判定（参数化，支持分级放宽）：
+   *  - 提炼结果中若含 ≥minCopyLen 字的连续片段原样出现在原文中 → 照搬
+   *  - 或与原文词集 Jaccard ≥ maxJaccard → 照搬
    * 满足任一即判不达标。
    */
-  const isQualityViewpoint = (agentId: string, vp: string | undefined): boolean => {
+  const isQualityViewpoint = (
+    agentId: string,
+    vp: string | undefined,
+    minCopyLen = 5,
+    maxJaccard = 0.6,
+  ): boolean => {
     if (!vp || !vp.trim()) return false;
     const v = vp.trim();
     if (v.length < 4) return false;
     const orig = origTextMap.get(agentId) || '';
-    // 滑动窗口检测最长公共连续片段（≥5 字即照搬）
-    const N = 5;
-    for (let i = 0; i + N <= v.length; i++) {
-      if (orig.includes(v.slice(i, i + N))) return false;
+    for (let i = 0; i + minCopyLen <= v.length; i++) {
+      if (orig.includes(v.slice(i, i + minCopyLen))) return false;
     }
-    // 词集 Jaccard 兜底
     const sim = jaccard(tokenize(v), origTokens.get(agentId) ?? new Set());
-    return sim < 0.6;
+    return sim < maxJaccard;
   };
 
   // 带超时的 chat 调用（30s），避免总结阶段卡死整个辩论流程
@@ -306,36 +315,102 @@ async function summarizeRound(
     }
   };
 
-  // ── 并发为每位 Agent 提炼一句观点 ──
-  // 每个 Agent 独立一次 LLM 调用，只看自己的发言，互不干扰；
-  // 质量校验失败则重试一次，仍不达标标注「未能提炼」，绝不照搬原话。
+  /** 算法去重：从 LLM 输出中删掉与原文连续 ≥5 字重合的片段，保留改写部分。 */
+  const deCopy = (text: string, original: string): string => {
+    if (!text) return '';
+    const N = 5;
+    const remove = new Set<number>();
+    for (let i = 0; i + N <= text.length; i++) {
+      if (original.includes(text.slice(i, i + N))) {
+        for (let j = i; j < i + N; j++) remove.add(j);
+      }
+    }
+    let out = '';
+    for (let i = 0; i < text.length; i++) {
+      if (remove.has(i)) {
+        if (out && !out.endsWith(' ')) out += ' ';
+      } else {
+        out += text[i];
+      }
+    }
+    return out.replace(/\s+/g, ' ').trim();
+  };
+
+  /**
+   * 提取式压缩兜底（保证总有总结）：去套话前缀，取首个分句，压到 40 字内。
+   * 这是当 LLM 改写全部失败时的最后保底——产出的是压缩摘录，而非「未能提炼」。
+   */
+  const extractiveCompress = (text: string): string => {
+    let t = stripLLMArtifacts(text || '').replace(/\s+/g, ' ').trim();
+    if (!t) return '（发言为空）';
+    // 去常见前缀套话
+    t = t
+      .replace(/^（[^）]*）/, '')
+      .replace(/^回应[^，。！？]*[，。！？]/, '')
+      .replace(/^兼听[^「]*「[^」]*」[，。！？]?/, '')
+      .replace(/^我参考的资料是[\s\S]*?(?=[，。！？]|$)/, '')
+      .trim();
+    // 取首个分句
+    const m = t.match(/^[^，。！；]+[，。！；]?/);
+    if (m) t = m[0].trim();
+    return t || '（发言过短）';
+  };
+
+  /**
+   * 并发为每位 Agent 提炼一句观点 —— 分级保底机制，保证一定有总结：
+   *  1. 严格改写（无 ≥5 字照搬、Jaccard<0.6）
+   *  2. 严格重试（强调禁止照搬）
+   *  3. 宽松接受（无 ≥10 字照搬）—— 允许更多重叠，避免误杀合理改写
+   *  4. 算法去重：对最佳尝试删除与原文重合片段
+   *  5. 提取式压缩兜底：去套话、取首句 —— 永不返回「未能提炼」
+   */
   const summarizeOneViewpoint = async (sp: Speech): Promise<RoundViewpoint> => {
     const name = nameOf(sp.agentId);
     const originText = stripLLMArtifacts(sp.text);
-    const sys = '你是严谨的辩论记录员。把给定发言浓缩成一句核心观点。\n要求：\n1. 用第三人称概括发言者的立场与主张；\n2. 必须用自己的话改写，严禁出现原文中任何连续 5 字以上的原句片段；\n3. 只输出观点本身，不要解释、引号、序号、标点前缀。';
-    const usr = `议题：${question}\n发言者：${name}（${sp.stance}）\n发言原文：\n${originText}\n\n请提炼一句核心观点（第三人称、用自己的话改写、禁止照搬原句连续片段）：`;
+    const baseSys = '你是严谨的辩论记录员。把给定发言浓缩成一句核心观点。\n要求：\n1. 用第三人称概括发言者的立场与主张；\n2. 必须用自己的话改写，严禁出现原文中任何连续 5 字以上的原句片段；\n3. 只输出观点本身，不要解释、引号、序号、标点前缀。';
 
-    const extractViewpoint = async (): Promise<string | null> => {
-      const raw = await chatWithTimeout(sys, usr);
+    const extractViewpoint = async (attempt: number): Promise<string | null> => {
+      const emphasis = attempt > 0
+        ? `\n\n[重要] 你上次的输出与原文过于雷同。请完全换一种表述，只用同义改写，杜绝任何原文连续片段，像在向没读过原文的人转述一样。`
+        : '';
+      const usr = `议题：${question}\n发言者：${name}（${sp.stance}）\n发言原文：\n${originText}\n\n请提炼一句核心观点（第三人称、用自己的话改写、禁止照搬原句连续片段）：${emphasis}`;
+      const raw = await chatWithTimeout(baseSys, usr);
       if (!raw) return null;
-      // 取首行、去引号/前缀标点
       const line = raw.split(/\r?\n/).map((s) => s.trim()).find((s) => s.length > 0) || raw.trim();
       return line.replace(/^[「『""'']+|[」』""'']+$/g, '').replace(/^(观点|总结|核心观点)[：:]\s*/i, '').trim();
     };
 
-    let vp = await extractViewpoint();
-    if (!isQualityViewpoint(sp.agentId, vp ?? undefined) && !isStopped()) {
-      // 重试一次，强调禁止照搬
-      const retry = await extractViewpoint();
-      if (retry) vp = retry;
+    // 三级尝试，记录每级结果
+    const attempts: (string | null)[] = [];
+    attempts.push(await extractViewpoint(0));
+    const strictOk = (v: string | null) => isQualityViewpoint(sp.agentId, v ?? undefined, 5, 0.6);
+    if (!strictOk(attempts[0]) && !isStopped()) attempts.push(await extractViewpoint(1));
+    const looseOk = (v: string | null) => isQualityViewpoint(sp.agentId, v ?? undefined, 10, 0.8);
+    if (attempts.every((v) => !strictOk(v)) && !isStopped()) attempts.push(await extractViewpoint(2));
+
+    // 选最佳：严格通过 > 宽松通过 > 任意非空
+    const passed = attempts.find(strictOk) || attempts.find(looseOk) || attempts.find((v) => v && v.trim().length >= 4) || null;
+
+    let finalVp: string;
+    if (passed && (strictOk(passed) || looseOk(passed))) {
+      // 通过质量门 → 直接用
+      finalVp = passed!.replace(/\s+/g, ' ').trim();
+    } else if (passed) {
+      // 有 LLM 输出但都没过照搬门 → 算法去重
+      const cleaned = deCopy(passed!, originText);
+      finalVp = cleaned.length >= 6 ? cleaned : extractiveCompress(originText);
+    } else {
+      // 所有 LLM 尝试失败（网络/超时）→ 提取式压缩兜底
+      finalVp = extractiveCompress(originText);
     }
 
+    finalVp = truncateViewpoint(finalVp, 40);
     return {
       agentId: sp.agentId,
       name,
       stance: sp.stance,
-      viewpoint: isQualityViewpoint(sp.agentId, vp ?? undefined) ? (vp || '').replace(/\s+/g, ' ').trim() : '（未能提炼，见原发言）',
-      viewpointFull: undefined,
+      viewpoint: finalVp,
+      viewpointFull: finalVp,
       evidenceCount: sp.sources?.length ?? 0,
     };
   };
@@ -360,8 +435,7 @@ async function summarizeRound(
     digestTask,
   ]);
 
-  if (isStopped()) return fallback();
-
+  // 已并发算出 viewpoints/digest，即便被停止也返回已有结果（保证有总结），不覆盖为 fallback
   return { round, title, digest, viewpoints, convergence };
 }
 

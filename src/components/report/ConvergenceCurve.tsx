@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import type { RoundSummary } from '@/types';
 
 /**
@@ -6,12 +7,14 @@ import type { RoundSummary } from '@/types';
  *
  * 数据来源：session.roundSummaries 每轮的 convergence ∈ [0,1]。
  * 展示辩论各轮的收敛度轨迹，帮助判断「讨论是否在向共识收敛」。
+ * 支持放大/缩小/复位（通过缩放 viewBox 实现）。
  */
 export function ConvergenceCurve({ rounds }: { rounds?: RoundSummary[] }) {
   const points = useMemo(
     () => (rounds || []).map((r) => ({ label: r.title, value: r.convergence })),
     [rounds],
   );
+  const [zoom, setZoom] = useState(1);
 
   if (points.length === 0) {
     return (
@@ -39,6 +42,13 @@ export function ConvergenceCurve({ rounds }: { rounds?: RoundSummary[] }) {
 
   const gold = 'var(--accent-gold)';
 
+  // 缩放：以中心为基准收窄 viewBox，实现放大；clamp 0.6-3
+  const z = Math.max(0.6, Math.min(3, zoom));
+  const vbW = W / z;
+  const vbH = H / z;
+  const vbX = (W - vbW) / 2;
+  const vbY = (H - vbH) / 2;
+
   return (
     <div className="rounded-lg border border-[var(--border-soft)] bg-[var(--bg-soft)] p-3">
       <div className="flex items-center justify-between mb-1.5 px-1">
@@ -49,13 +59,27 @@ export function ConvergenceCurve({ rounds }: { rounds?: RoundSummary[] }) {
           </span>
           <span>0（发散）→ 1（收敛）</span>
         </div>
-        {points.length > 1 && (
-          <span className="text-[12px] text-[var(--text-primary)]/85">
-            趋势 {trendArrow(points[points.length - 1].value, points[0].value)}
+        <div className="flex items-center gap-1">
+          {points.length > 1 && (
+            <span className="text-[12px] text-[var(--text-primary)]/85 mr-2 hidden sm:inline">
+              趋势 {trendArrow(points[points.length - 1].value, points[0].value)}
+            </span>
+          )}
+          <span className="text-[10px] font-mono tabular-nums text-[var(--text-muted)] w-9 text-right mr-1">
+            {Math.round(z * 100)}%
           </span>
-        )}
+          <ZoomBtn title="缩小" onClick={() => setZoom((z) => Math.max(0.6, +(z - 0.2).toFixed(2)))}>
+            <ZoomOut size={14} />
+          </ZoomBtn>
+          <ZoomBtn title="放大" onClick={() => setZoom((z) => Math.min(3, +(z + 0.2).toFixed(2)))}>
+            <ZoomIn size={14} />
+          </ZoomBtn>
+          <ZoomBtn title="复位" onClick={() => setZoom(1)}>
+            <Maximize2 size={14} />
+          </ZoomBtn>
+        </div>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet" style={{ fontFamily: 'inherit', fontSize: '12px' }}>
+      <svg viewBox={`${vbX.toFixed(1)} ${vbY.toFixed(1)} ${vbW.toFixed(1)} ${vbH.toFixed(1)}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet" style={{ fontFamily: 'inherit', fontSize: '9px' }}>
         {/* 网格线 0 / 0.5 / 1 */}
         {[0, 0.5, 1].map((g) => (
           <g key={g}>
@@ -68,7 +92,7 @@ export function ConvergenceCurve({ rounds }: { rounds?: RoundSummary[] }) {
               strokeWidth={1}
               strokeDasharray={g === 0 || g === 1 ? '0' : '3 3'}
             />
-            <text x={padX - 6} y={y(g) + 3} textAnchor="end" fontSize="12" fill="var(--text-primary)" opacity={0.65}>
+            <text x={padX - 6} y={y(g) + 3} textAnchor="end" fontSize="9" fill="var(--text-primary)" opacity={0.65}>
               {g.toFixed(1)}
             </text>
           </g>
@@ -80,17 +104,30 @@ export function ConvergenceCurve({ rounds }: { rounds?: RoundSummary[] }) {
         {/* 数据点 + 标签 */}
         {points.map((p, i) => (
           <g key={i}>
-            <circle cx={x(i)} cy={y(p.value)} r={3.5} fill={gold} stroke="var(--bg-soft)" strokeWidth={1.5} />
-            <text x={x(i)} y={y(p.value) - 8} textAnchor="middle" fontSize="12" fontWeight="600" fill="var(--text-primary)">
+            <circle cx={x(i)} cy={y(p.value)} r={3} fill={gold} stroke="var(--bg-soft)" strokeWidth={1.5} />
+            <text x={x(i)} y={y(p.value) - 7} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--text-primary)">
               {(p.value * 100).toFixed(0)}%
             </text>
-            <text x={x(i)} y={H - 12} textAnchor="middle" fontSize="12" fill="var(--text-primary)" opacity={0.65}>
+            <text x={x(i)} y={H - 10} textAnchor="middle" fontSize="8.5" fill="var(--text-primary)" opacity={0.65}>
               {p.label}
             </text>
           </g>
         ))}
       </svg>
     </div>
+  );
+}
+
+function ZoomBtn({ title, onClick, children }: { title: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[var(--text-soft)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] border border-transparent hover:border-[var(--border-soft)] transition-colors"
+    >
+      {children}
+    </button>
   );
 }
 

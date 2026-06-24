@@ -346,4 +346,119 @@ export const ReportBuilder = {
     lines.push('');
     return lines.join('\n');
   },
+
+  /**
+   * 生成自包含 HTML 报告（内联 CSS + SVG 收敛曲线），离线打开样式完整。
+   */
+  toHTML(report: FinalReport, question: string): string {
+    const esc = (s: string) =>
+      (s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    const stanceLabel = { pro: '支持', con: '反对', neutral: '中立' } as const;
+    const stanceColor = { pro: '#B8A878', con: '#D08877', neutral: '#6FB3A8' } as const;
+
+    const convergenceSVG = (() => {
+      const pts = (report.roundSummaries || []).filter((rs) => typeof rs.convergence === 'number');
+      if (pts.length === 0) return '';
+      const W = 520, H = 160, padX = 40, padTop = 18, padBottom = 34;
+      const innerW = W - padX - 16, innerH = H - padTop - padBottom;
+      const x = (i: number) => padX + (pts.length === 1 ? innerW / 2 : (i / (pts.length - 1)) * innerW);
+      const y = (v: number) => padTop + (1 - v) * innerH;
+      const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(p.convergence!).toFixed(1)}`).join(' ');
+      const areaD = `${pathD} L ${x(pts.length - 1).toFixed(1)} ${(padTop + innerH).toFixed(1)} L ${x(0).toFixed(1)} ${(padTop + innerH).toFixed(1)} Z`;
+      const grid = [0, 0.5, 1].map((g) => `
+        <line x1="${padX}" x2="${W - 16}" y1="${y(g)}" y2="${y(g)}" stroke="#ddd" stroke-width="1" ${g === 0 || g === 1 ? '' : 'stroke-dasharray="3 3"'} />
+        <text x="${padX - 6}" y="${y(g) + 3}" text-anchor="end" font-size="9" fill="#888">${g.toFixed(1)}</text>`).join('');
+      const dots = pts.map((p, i) => `
+        <circle cx="${x(i)}" cy="${y(p.convergence!)}" r="3" fill="#B8A878" stroke="#fff" stroke-width="1.5" />
+        <text x="${x(i)}" y="${y(p.convergence!) - 7}" text-anchor="middle" font-size="9" font-weight="600" fill="#333">${(p.convergence! * 100).toFixed(0)}%</text>
+        <text x="${x(i)}" y="${H - 10}" text-anchor="middle" font-size="8.5" fill="#888">${esc(p.title)}</text>`).join('');
+      return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;font-family:inherit;font-size:9px">${grid}<path d="${areaD}" fill="#B8A878" opacity="0.1" /><path d="${pathD}" fill="none" stroke="#B8A878" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />${dots}</svg>`;
+    })();
+
+    const args = report.arguments
+      .map((a) => `
+      <div class="arg">
+        <h3>${esc(a.point)}</h3>
+        <p>支持：${esc(a.supporters.join('、')) || '无'}　|　反对：${esc(a.opposers.join('、')) || '无'}</p>
+        ${a.evidence.length ? `<ul>${a.evidence.map((e) => `<li><a href="${esc(e.url)}" target="_blank">${esc(e.title)}</a> <span class="domain">${esc(e.domain)}</span></li>`).join('')}</ul>` : ''}
+      </div>`)
+      .join('');
+
+    const rounds = (report.roundSummaries || [])
+      .map((rs) => `
+      <div class="round">
+        <h3>${esc(rs.title)}</h3>
+        <p class="digest">${esc(rs.digest)}</p>
+        ${typeof rs.convergence === 'number' ? `<p class="conv">议题收敛度：${(rs.convergence * 100).toFixed(0)}%</p>` : ''}
+        <ul class="viewpoints">
+          ${rs.viewpoints.map((v) => `<li><span class="bar" style="background:${stanceColor[v.stance]}"></span><b>${esc(v.name)}</b>（${stanceLabel[v.stance]}）：${esc(v.viewpoint)}${v.evidenceCount ? `<span class="evi">· ${v.evidenceCount} 证据</span>` : ''}</li>`).join('')}
+        </ul>
+      </div>`)
+      .join('');
+
+    return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>议事厅最终报告 — ${esc(question)}</title>
+<style>
+  :root { color-scheme: light; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; max-width: 820px; margin: 32px auto; padding: 0 20px; color: #1a1a1a; line-height: 1.7; background: #fff; }
+  h1 { font-size: 22px; border-bottom: 2px solid #B8A878; padding-bottom: 8px; }
+  h2 { font-size: 16px; margin-top: 28px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+  h3 { font-size: 14px; margin: 14px 0 6px; }
+  .meta { color: #888; font-size: 12px; margin: 4px 0; }
+  .tldr { background: #faf7f0; border-left: 3px solid #B8A878; padding: 10px 14px; border-radius: 4px; font-size: 14px; }
+  ul, ol { padding-left: 22px; font-size: 13px; }
+  li { margin: 4px 0; }
+  .arg { background: #fafafa; border: 1px solid #eee; border-radius: 8px; padding: 12px 16px; margin: 10px 0; }
+  .arg a, .domain { font-size: 12px; }
+  .arg a { color: #2C5F5D; }
+  .domain { color: #aaa; margin-left: 4px; text-transform: uppercase; }
+  .round { background: #fafafa; border: 1px solid #eee; border-radius: 8px; padding: 12px 16px; margin: 10px 0; }
+  .digest { font-size: 13px; color: #333; }
+  .conv { font-size: 12px; color: #B8A878; font-weight: 600; }
+  .viewpoints { list-style: none; padding-left: 0; }
+  .viewpoints li { position: relative; padding-left: 14px; font-size: 13px; }
+  .viewpoints .bar { position: absolute; left: 0; top: 7px; width: 3px; height: 14px; border-radius: 2px; }
+  .evi { color: #2C5F5D; font-size: 11px; margin-left: 4px; }
+  .chart { margin: 10px 0; }
+  .legend { font-size: 12px; color: #888; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+  <h1>议事厅最终报告</h1>
+  <p class="meta">议题：${esc(question)}</p>
+  <p class="meta">生成时间：${esc(new Date(report.generatedAt).toLocaleString())}</p>
+
+  <h2>TL;DR</h2>
+  <div class="tldr">${esc(report.tldr)}</div>
+
+  <h2>总结与评述</h2>
+  <p>${esc(report.summary)}</p>
+  <ul>${report.evaluation.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>
+
+  <h2>共识点（${report.consensus.length}）</h2>
+  <ol>${report.consensus.map((c) => `<li>${esc(c)}</li>`).join('')}</ol>
+
+  <h2>关键分歧（${report.disagreements.length}）</h2>
+  <ol>${report.disagreements.map((d) => `<li>${esc(d)}</li>`).join('')}</ol>
+
+  <h2>论点明细</h2>
+  ${args || '<p>无</p>'}
+
+  ${report.roundSummaries && report.roundSummaries.length ? `<h2>观点演进（${report.roundSummaries.length}）</h2>${rounds}` : ''}
+
+  ${convergenceSVG ? `<h2>议题收敛曲线</h2><div class="legend">0（发散）→ 1（收敛）</div><div class="chart">${convergenceSVG}</div>` : ''}
+
+  <h2>行动建议</h2>
+  <ol>${report.actions.map((a) => `<li>${esc(a)}</li>`).join('')}</ol>
+</body>
+</html>`;
+  },
 };
