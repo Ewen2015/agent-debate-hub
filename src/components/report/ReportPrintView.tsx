@@ -50,26 +50,6 @@ export function ReportPrintView({
         ))}
       </ol>
 
-      <h2 className="report-h2">论点明细</h2>
-      {report.arguments.map((a) => (
-        <div className="report-arg" key={a.id}>
-          <h3 className="report-h3">{a.point}</h3>
-          <p className="report-p">
-            支持：{a.supporters.join('、') || '无'}　|　反对：
-            {a.opposers.join('、') || '无'}
-          </p>
-          {a.evidence.length > 0 && (
-            <ul className="report-ul">
-              {a.evidence.map((e) => (
-                <li key={e.url}>
-                  {e.title}（{e.domain}）
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ))}
-
       <h2 className="report-h2">辩论观点演进图</h2>
       {speeches.length > 0 ? (
         <ArgumentEvolutionGraph

@@ -1,24 +1,19 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Download, Copy, Check, ChevronDown, ChevronUp, FileText, Calendar, FileDown, Code2 } from 'lucide-react';
+import { Download, Copy, Check, FileText, Calendar, FileDown, Code2 } from 'lucide-react';
 import { useSessionStore } from '@/store/sessionStore';
 import { useRosterStore } from '@/store/staticStores';
 import { ReportBuilder } from '@/engine/ReportBuilder';
 import { Button } from '@/components/shared/Button';
 import { Chip } from '@/components/shared/Chip';
-import { resolvePersona } from '@/engine/MockLLM';
 import { ArgumentEvolutionGraph } from '@/components/report/ArgumentEvolutionGraph';
 import { ConvergenceCurve } from '@/components/report/ConvergenceCurve';
 import { Markdown } from '@/components/shared/Markdown';
-import type { FinalReport } from '@/types';
 
 export function ReportPanel() {
   const report = useSessionStore((s) => s.report);
   const session = useSessionStore((s) => s.session);
-  const setReport = useSessionStore((s) => s.setReport);
   const agents = useRosterStore((s) => s.agents);
 
-  const [expandedArg, setExpandedArg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const summary = report?.summary ?? '';
   const evaluation = report?.evaluation ?? [];
@@ -118,6 +113,19 @@ export function ReportPanel() {
         <Markdown className="text-[12px] leading-relaxed text-[var(--text-primary)]/90">
           {report.tldr}
         </Markdown>
+        {report.tldrMeta && (
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+            <Chip tone="gold" size="sm">{report.tldrMeta.model || '未指定模型'}</Chip>
+            <Chip tone="neutral" size="sm">{report.tldrMeta.agentCount} 位角色</Chip>
+            <Chip tone="neutral" size="sm">{report.tldrMeta.roundCount} 轮辩论</Chip>
+            <Chip tone="neutral" size="sm">用时 {report.tldrMeta.duration}</Chip>
+            {report.tldrMeta.convergence && (
+              <Chip tone="cyan" size="sm">
+                收敛 {(report.tldrMeta.convergence.from * 100).toFixed(0)}%→{(report.tldrMeta.convergence.to * 100).toFixed(0)}%（{report.tldrMeta.convergence.trend}）
+              </Chip>
+            )}
+          </div>
+        )}
       </Section>
 
       <Section title="总结与评述" index="02">
@@ -157,93 +165,11 @@ export function ReportPanel() {
         </ul>
       </Section>
 
-      <Section title="论点明细" index="04" count={report.arguments.length}>
-        <div className="space-y-2">
-          {report.arguments.map((a) => {
-            const open = expandedArg === a.id;
-            return (
-              <div key={a.id} className="glass rounded-lg overflow-hidden">
-                <button
-                  onClick={() => setExpandedArg(open ? null : a.id)}
-                  className="w-full px-3 py-2 flex items-center gap-2 text-left"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-display text-[14px] text-[var(--text-primary)] break-words">
-                      {a.point}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      {a.supporters.length > 0 && (
-                        <Chip tone="gold" size="sm">{a.supporters.length} 支持</Chip>
-                      )}
-                      {a.opposers.length > 0 && (
-                        <Chip tone="rose" size="sm">{a.opposers.length} 反对</Chip>
-                      )}
-                      {a.evidence.length > 0 && (
-                        <Chip tone="cyan" size="sm">{a.evidence.length} 证据</Chip>
-                      )}
-                    </div>
-                  </div>
-                  {open ? <ChevronUp size={14} className="text-[var(--text-primary)]/50" /> : <ChevronDown size={14} className="text-[var(--text-primary)]/50" />}
-                </button>
-                <AnimatePresence>
-                  {open && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="border-t border-[var(--border-soft)] px-3 py-2.5 space-y-2 overflow-hidden"
-                    >
-                      {a.supporters.length > 0 && (
-                        <div>
-                          <div className="text-[10px] tracking-widish uppercase text-[var(--accent-gold)]/70 mb-1">支持</div>
-                          <div className="text-[12px] text-[var(--text-primary)]/75 break-words">{a.supporters.join('、')}</div>
-                        </div>
-                      )}
-                      {a.opposers.length > 0 && (
-                        <div>
-                          <div className="text-[10px] tracking-widish uppercase text-[var(--accent-rose)]/70 mb-1">反对</div>
-                          <div className="text-[12px] text-[var(--text-primary)]/75 break-words">{a.opposers.join('、')}</div>
-                        </div>
-                      )}
-                      {a.evidence.length > 0 && (
-                        <div>
-                          <div className="text-[10px] tracking-widish uppercase text-[var(--accent-cyan)]/70 mb-1">证据</div>
-                          <ul className="space-y-1">
-                            {a.evidence.map((e) => (
-                              <li
-                                key={e.url}
-                                className="text-[12px] pl-2 border-l border-[var(--accent-cyan)]/30 break-words"
-                              >
-                                <a
-                                  href={e.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-[var(--accent-cyan)]/85 hover:text-[var(--accent-cyan)] break-words"
-                                >
-                                  {e.title}
-                                </a>
-                                <span className="text-[var(--text-primary)]/30 ml-1.5 text-[10px] tracking-widish uppercase">
-                                  {e.domain}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
-        </div>
-      </Section>
-
-      <Section title="议题收敛曲线" index="05">
+      <Section title="议题收敛曲线" index="04">
         <ConvergenceCurve rounds={report?.roundSummaries ?? session.roundSummaries} />
       </Section>
 
-      <Section title="行动建议" index="06" count={report.actions.length}>
+      <Section title="行动建议" index="05" count={report.actions.length}>
         <ol className="space-y-1.5 list-decimal list-inside">
           {report.actions.map((a, i) => (
             <li
@@ -256,7 +182,7 @@ export function ReportPanel() {
         </ol>
       </Section>
 
-      <Section title="辩论观点演进图" index="07">
+      <Section title="辩论观点演进图" index="06">
         <ArgumentEvolutionGraph
           roundSummaries={report?.roundSummaries ?? session.roundSummaries}
           speeches={session.speeches}

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useRosterStore } from '@/store/staticStores';
 import { resolvePersona } from '@/engine/MockLLM';
 import type { AgentStance, RosterAgent, RoundSummary, RoundViewpoint, Speech } from '@/types';
@@ -51,12 +51,14 @@ function columnsFromSpeeches(speeches: Speech[], agents: RosterAgent[]): Column[
       digest: `${round === 0 ? 'Brainstorm' : `第 ${round} 轮`} · 共 ${list.length} 位发言者`,
       viewpoints: list.map<RoundViewpoint>((sp) => {
         const t = (sp.text || '').replace(/\s+/g, ' ').trim();
-        const v = t.length > 30 ? t.slice(0, 30) + '…' : t;
+        const truncated = t.length > 30;
+        const v = truncated ? t.slice(0, 30) + '…' : t;
         return {
           agentId: sp.agentId,
           name: nameOf(sp.agentId),
           stance: sp.stance,
           viewpoint: v || '（无观点）',
+          viewpointFull: truncated ? t : undefined,
           evidenceCount: sp.sources?.length ?? 0,
         };
       }),
@@ -152,6 +154,10 @@ function RoundColumn({ column }: { column: Column }) {
 
 function ViewpointCard({ v }: { v: RoundViewpoint }) {
   const color = STANCE_FILL[v.stance] ?? STANCE_FILL.neutral;
+  // viewpoint 截断到 40 字、viewpointFull 保留完整版（见 DebateEngine / 类型注释「供展开查看」）。
+  // 仅当确实发生过截断（短摘要以 … 结尾且与完整版不同）时才提供展开。
+  const truncated = !!v.viewpointFull && v.viewpointFull !== v.viewpoint && v.viewpoint.endsWith('…');
+  const [expanded, setExpanded] = useState(false);
   return (
     <div className="relative rounded-md bg-[var(--bg-card-soft)] border border-[var(--border-soft)] pl-3 pr-2.5 py-2">
       <span
@@ -171,11 +177,22 @@ function ViewpointCard({ v }: { v: RoundViewpoint }) {
         </span>
       </div>
       <div className="text-[13px] leading-[20px] text-[var(--text-primary)] break-words">
-        {v.viewpoint}
+        {expanded && v.viewpointFull ? v.viewpointFull : v.viewpoint}
       </div>
-      {v.evidenceCount > 0 && (
-        <div className="mt-1 text-[10px] text-[var(--accent-cyan)]/80">
-          引用 {v.evidenceCount} 条证据
+      {(truncated || v.evidenceCount > 0) && (
+        <div className="mt-1 flex items-center gap-3 text-[10px]">
+          {truncated && (
+            <button
+              type="button"
+              onClick={() => setExpanded((e) => !e)}
+              className="text-[var(--accent-cyan)]/80 hover:text-[var(--accent-cyan)] transition-colors"
+            >
+              {expanded ? '收起' : '展开全文'}
+            </button>
+          )}
+          {v.evidenceCount > 0 && (
+            <span className="text-[var(--accent-cyan)]/80">引用 {v.evidenceCount} 条证据</span>
+          )}
         </div>
       )}
     </div>

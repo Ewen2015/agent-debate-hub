@@ -122,6 +122,16 @@ export interface FinalReport {
   sessionId: string;
   generatedAt: number;
   tldr: string;
+  /** TL;DR 元信息（模型 / 角色数 / 轮次 / 时长 / 收敛趋势），供顶部结构化展示 */
+  tldrMeta?: {
+    model?: string;
+    agentCount: number;
+    roundCount: number;
+    /** 辩论总用时（人类可读，如「3 分钟」） */
+    duration: string;
+    /** 收敛度趋势：起始→末尾百分比 + 升降方向 */
+    convergence?: { from: number; to: number; trend: string };
+  };
   summary: string;
   evaluation: string[];
   consensus: string[];

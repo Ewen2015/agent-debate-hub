@@ -1,6 +1,7 @@
-import type { FinalReport, RosterAgent, RoundSummary, Source, Speech } from '@/types';
+import type { FinalReport, RoundSummary, Source, Speech } from '@/types';
 import { resolvePersona } from '@/engine/MockLLM';
 import { useRosterStore } from '@/store/staticStores';
+import { useSessionStore } from '@/store/sessionStore';
 import { chat, type LLMConfig, type ChatMessage } from '@/engine/LLMClient';
 
 const personaName = (id: string): string => {
@@ -62,11 +63,36 @@ const dedupSources = (arr: Source[]) => {
   return out;
 };
 
+const formatDuration = (ms: number): string => {
+  const totalMin = Math.max(0, Math.round((ms || 0) / 60000));
+  if (totalMin < 60) return `${totalMin} 分钟`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h} 小时 ${m} 分钟`;
+};
+
+/** 将各轮系统总结的 digest 串成「辩题走向」叙述：观点从何切入、中段如何交锋、最终收敛到哪。 */
+const buildTrajectory = (roundSummaries: RoundSummary[], debateSpeeches: Speech[]): string => {
+  const digests = roundSummaries
+    .filter((rs) => rs.digest && !rs.digest.includes('无发言记录') && !rs.digest.includes('位发言者参与'))
+    .map((rs) => ({ title: rs.title, digest: rs.digest }));
+  if (digests.length === 0) {
+    if (debateSpeeches.length === 0) return '本轮尚无正式辩论发言，辩题走向有待后续展开。';
+    return `讨论已围绕「议题」展开 ${debateSpeeches.length} 次发言，观点尚未经过多轮收敛，走向有待下一轮明晰。`;
+  }
+  if (digests.length === 1) return `辩论起步于「${digests[0].digest}」。`;
+  const first = digests[0].digest;
+  const last = digests[digests.length - 1].digest;
+  const mid = digests.length > 2 ? `中段交锋聚焦「${digests[Math.floor(digests.length / 2)].digest}」；` : '';
+  return `辩论从「${first}」切入；${mid}最终收敛到「${last}」。`;
+};
+
 const buildTemplateReport = (
   sessionId: string,
   question: string,
   speeches: Speech[],
   roundSummaries: RoundSummary[] = [],
+  model?: string,
 ): FinalReport => {
   const debateSpeeches = speeches.filter((s) => s.round > 0);
   const groups = cluster(debateSpeeches);
@@ -113,7 +139,6 @@ const buildTemplateReport = (
 
   const totalAgents = useRosterStore.getState().agents.length;
   const thresholdSupport = Math.max(1, Math.round(totalAgents * 0.55));
-  const thresholdOppose = Math.max(1, Math.round(totalAgents * 0.35));
 
   const consensus = arguments_
     .filter((a) => a.supporters.length >= thresholdSupport && a.opposers.length === 0)
@@ -159,22 +184,44 @@ const buildTemplateReport = (
   ];
 
   const convRounds = roundSummaries.filter((rs) => typeof rs.convergence === 'number');
-  let convDesc = '';
+  let convergenceMeta: { from: number; to: number; trend: string } | undefined;
+  let convPhrase = '';
   if (convRounds.length >= 2) {
     const initial = convRounds[0].convergence;
     const final = convRounds[convRounds.length - 1].convergence;
     const delta = final - initial;
     const trend = delta > 0.08 ? '上升' : delta < -0.08 ? '下降' : '基本持平';
-    convDesc = `经 ${convRounds.length} 轮辩论，收敛度从 ${(initial * 100).toFixed(0)}% ${trend}至 ${(final * 100).toFixed(0)}%，`;
+    convergenceMeta = { from: initial, to: final, trend };
+    convPhrase = `收敛度由 ${(initial * 100).toFixed(0)}% ${trend}至 ${(final * 100).toFixed(0)}%`;
   } else if (convRounds.length === 1) {
-    convDesc = `本轮收敛度为 ${(convRounds[0].convergence * 100).toFixed(0)}%，`;
+    convPhrase = `收敛度为 ${(convRounds[0].convergence * 100).toFixed(0)}%`;
   }
-  const tldr = `围绕「${question}」，${convDesc}讨论形成 ${consensus.length} 条共识，同时存在 ${disagreements.length} 处分歧，需要围绕风险与收益进一步验证。`;
+
+  // 辩题走向：用各轮系统总结的 digest 串成「从何切入 → 中段交锋 → 收敛到哪」的叙述，避免空洞原则。
+  const trajectory = buildTrajectory(roundSummaries, debateSpeeches);
+  const trendWord = convergenceMeta?.trend === '上升' ? '讨论整体趋向收敛' : convergenceMeta?.trend === '下降' ? '分歧有所扩大' : '收敛度基本稳定';
+  const tldr = [trajectory, convPhrase ? `${convPhrase}，${trendWord}。` : ''].filter(Boolean).join('；');
+
+  // 元信息：模型 / 角色数 / 轮次 / 时长（会话总用时，取自 store）
+  const sess = useSessionStore.getState().session;
+  const roundCount = roundSummaries.length || debateSpeeches.length ? new Set(debateSpeeches.map((s) => s.round)).size : 0;
+  const durationMs =
+    sess.totalElapsedMs ??
+    roundSummaries.reduce((sum, rs) => sum + (rs.elapsedMs ?? 0), 0) ??
+    (sess.startedAt ? Date.now() - sess.startedAt : 0);
+  const tldrMeta = {
+    model: model,
+    agentCount: totalAgents,
+    roundCount,
+    duration: formatDuration(durationMs),
+    convergence: convergenceMeta,
+  };
 
   return {
     sessionId,
     generatedAt: Date.now(),
     tldr,
+    tldrMeta,
     summary,
     evaluation,
     consensus,
@@ -210,9 +257,9 @@ const buildLLMReport = async (
     const final = convRounds[convRounds.length - 1].convergence;
     const delta = final - initial;
     const trend = delta > 0.08 ? '上升' : delta < -0.08 ? '下降' : '基本持平';
-    convergenceInfo = `\n收敛数据：经 ${convRounds.length} 轮辩论，收敛度从 ${(initial * 100).toFixed(0)}% ${trend}至 ${(final * 100).toFixed(0)}%（0=发散，1=收敛）。\n`;
+    convergenceInfo = `\n收敛数据：经 ${convRounds.length} 轮辩论，收敛度从 ${(initial * 100).toFixed(0)}% ${trend}至 ${(final * 100).toFixed(0)}%（0%=发散，100%=收敛）。\n`;
   } else if (convRounds.length === 1) {
-    convergenceInfo = `\n收敛数据：本轮收敛度为 ${(convRounds[0].convergence * 100).toFixed(0)}%（0=发散，1=收敛）。\n`;
+    convergenceInfo = `\n收敛数据：本轮收敛度为 ${(convRounds[0].convergence * 100).toFixed(0)}%（0%=发散，100%=收敛）。\n`;
   }
 
   const sysPrompt = `你是资深议事总结者，擅长将多方议论转化为可执行的报告。请根据下方多 Agent 辩论记录，输出结构化 JSON。`;
@@ -225,7 +272,7 @@ ${transcript}
 ${convergenceInfo}
 请输出严格 JSON（不要用 markdown 代码块包裹），结构：
 {
-  "tldr": "1-2 句 TL;DR 总结，须包含收敛度变化情况",
+  "tldr": "1-2 句 TL;DR：说明辩题的走向（观点从何切入、中段如何交锋、最终收敛到何种判断）",
   "summary": "1-2 句对讨论内容与辩论观点的综合概括",
   "consensus": ["共识 1", "共识 2", ...],
   "disagreements": ["分歧 1（含支持方或反对方的观点）", ...],
@@ -234,7 +281,7 @@ ${convergenceInfo}
 }
 
 要求：
-- tldr 须简要概述本次辩论的收敛情况（收敛度变化趋势），并结合共识与分歧数量给出整体判断
+- tldr 要落到辩题走向的具体说明：观点从哪个角度切入、中段围绕什么交锋、最终收敛到什么判断或悬而未决；可附带收敛度趋势，但不要只报「N 条共识、M 处分歧」这类空洞计数
 - summary 要直接概括讨论中的核心观点和各方立场，不要只写结构性说明
 - consensus 仅写全场公认无争议的结论
 - disagreements 必须包含具体观点差异和立场对立，不要泛泛而谈
@@ -273,7 +320,7 @@ export const ReportBuilder = {
     args: { sessionId: string; question: string; speeches: Speech[]; roundSummaries?: RoundSummary[] },
     cfg?: LLMConfig | null,
   ): Promise<FinalReport> {
-    const base = buildTemplateReport(args.sessionId, args.question, args.speeches, args.roundSummaries);
+    const base = buildTemplateReport(args.sessionId, args.question, args.speeches, args.roundSummaries, cfg?.model);
     if (!cfg || !cfg.apiKey) return base;
     try {
       return await buildLLMReport(base, args.question, args.speeches, cfg);
@@ -297,6 +344,12 @@ export const ReportBuilder = {
     lines.push('');
     lines.push(`## TL;DR`);
     lines.push(report.tldr);
+    if (report.tldrMeta) {
+      const m = report.tldrMeta;
+      const conv = m.convergence ? `、收敛度 ${(m.convergence.from * 100).toFixed(0)}%→${(m.convergence.to * 100).toFixed(0)}%（${m.convergence.trend}）` : '';
+      lines.push('');
+      lines.push(`> 模型：${m.model || '未指定'} | 参与角色：${m.agentCount} 位 | 辩论轮次：${m.roundCount} 轮 | 用时：${m.duration}${conv}`);
+    }
     lines.push('');
     lines.push(`## 总结与评述`);
     lines.push(report.summary);
@@ -308,17 +361,6 @@ export const ReportBuilder = {
     lines.push(`## 关键分歧 (${report.disagreements.length})`);
     report.disagreements.forEach((d, i) => lines.push(`${i + 1}. ${d}`));
     lines.push('');
-    lines.push(`## 论点明细`);
-    report.arguments.forEach((a) => {
-      lines.push(`### ${a.point}`);
-      lines.push(`- **支持**：${a.supporters.join('、') || '无'}`);
-      lines.push(`- **反对**：${a.opposers.join('、') || '无'}`);
-      if (a.evidence.length) {
-        lines.push(`- **证据**：`);
-        a.evidence.forEach((e) => lines.push(`  - [${e.title}](${e.url}) — _${e.domain}_`));
-      }
-      lines.push('');
-    });
     if (report.roundSummaries && report.roundSummaries.length) {
       lines.push(`## 观点演进 (${report.roundSummaries.length})`);
       report.roundSummaries.forEach((rs) => {
@@ -371,22 +413,14 @@ export const ReportBuilder = {
       const areaD = `${pathD} L ${x(pts.length - 1).toFixed(1)} ${(padTop + innerH).toFixed(1)} L ${x(0).toFixed(1)} ${(padTop + innerH).toFixed(1)} Z`;
       const grid = [0, 0.5, 1].map((g) => `
         <line x1="${padX}" x2="${W - 16}" y1="${y(g)}" y2="${y(g)}" stroke="#ddd" stroke-width="1" ${g === 0 || g === 1 ? '' : 'stroke-dasharray="3 3"'} />
-        <text x="${padX - 6}" y="${y(g) + 3}" text-anchor="end" font-size="9" fill="#888">${g.toFixed(1)}</text>`).join('');
+        <text x="${padX - 6}" y="${y(g) + 3}" text-anchor="end" font-size="9" fill="#888">${(g * 100).toFixed(0)}%</text>`).join('');
+      // 不在图上标数值；x 轴轮号 >10 轮时每 10 轮打一次刻度，≤10 轮逐轮标
+      const shouldTick = (i: number) => pts.length <= 10 || i === 0 || (i + 1) % 10 === 0;
       const dots = pts.map((p, i) => `
         <circle cx="${x(i)}" cy="${y(p.convergence!)}" r="3" fill="#B8A878" stroke="#fff" stroke-width="1.5" />
-        <text x="${x(i)}" y="${y(p.convergence!) - 7}" text-anchor="middle" font-size="9" font-weight="600" fill="#333">${(p.convergence! * 100).toFixed(0)}%</text>
-        <text x="${x(i)}" y="${H - 10}" text-anchor="middle" font-size="8.5" fill="#888">${esc(p.title)}</text>`).join('');
+        ${shouldTick(i) ? `<text x="${x(i)}" y="${H - 10}" text-anchor="middle" font-size="9" fill="#888">${i + 1}</text>` : ''}`).join('');
       return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;font-family:inherit;font-size:9px">${grid}<path d="${areaD}" fill="#B8A878" opacity="0.1" /><path d="${pathD}" fill="none" stroke="#B8A878" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />${dots}</svg>`;
     })();
-
-    const args = report.arguments
-      .map((a) => `
-      <div class="arg">
-        <h3>${esc(a.point)}</h3>
-        <p>支持：${esc(a.supporters.join('、')) || '无'}　|　反对：${esc(a.opposers.join('、')) || '无'}</p>
-        ${a.evidence.length ? `<ul>${a.evidence.map((e) => `<li><a href="${esc(e.url)}" target="_blank">${esc(e.title)}</a> <span class="domain">${esc(e.domain)}</span></li>`).join('')}</ul>` : ''}
-      </div>`)
-      .join('');
 
     const rounds = (report.roundSummaries || [])
       .map((rs) => `
@@ -416,10 +450,6 @@ export const ReportBuilder = {
   .tldr { background: #faf7f0; border-left: 3px solid #B8A878; padding: 10px 14px; border-radius: 4px; font-size: 14px; }
   ul, ol { padding-left: 22px; font-size: 13px; }
   li { margin: 4px 0; }
-  .arg { background: #fafafa; border: 1px solid #eee; border-radius: 8px; padding: 12px 16px; margin: 10px 0; }
-  .arg a, .domain { font-size: 12px; }
-  .arg a { color: #2C5F5D; }
-  .domain { color: #aaa; margin-left: 4px; text-transform: uppercase; }
   .round { background: #fafafa; border: 1px solid #eee; border-radius: 8px; padding: 12px 16px; margin: 10px 0; }
   .digest { font-size: 13px; color: #333; }
   .conv { font-size: 12px; color: #B8A878; font-weight: 600; }
@@ -438,6 +468,7 @@ export const ReportBuilder = {
 
   <h2>TL;DR</h2>
   <div class="tldr">${esc(report.tldr)}</div>
+  ${report.tldrMeta ? `<p class="meta">模型：${esc(report.tldrMeta.model || '未指定')} | 参与角色：${report.tldrMeta.agentCount} 位 | 辩论轮次：${report.tldrMeta.roundCount} 轮 | 用时：${esc(report.tldrMeta.duration)}${report.tldrMeta.convergence ? ` | 收敛度 ${(report.tldrMeta.convergence.from * 100).toFixed(0)}%→${(report.tldrMeta.convergence.to * 100).toFixed(0)}%（${esc(report.tldrMeta.convergence.trend)}）` : ''}</p>` : ''}
 
   <h2>总结与评述</h2>
   <p>${esc(report.summary)}</p>
@@ -449,12 +480,9 @@ export const ReportBuilder = {
   <h2>关键分歧（${report.disagreements.length}）</h2>
   <ol>${report.disagreements.map((d) => `<li>${esc(d)}</li>`).join('')}</ol>
 
-  <h2>论点明细</h2>
-  ${args || '<p>无</p>'}
-
   ${report.roundSummaries && report.roundSummaries.length ? `<h2>观点演进（${report.roundSummaries.length}）</h2>${rounds}` : ''}
 
-  ${convergenceSVG ? `<h2>议题收敛曲线</h2><div class="legend">0（发散）→ 1（收敛）</div><div class="chart">${convergenceSVG}</div>` : ''}
+  ${convergenceSVG ? `<h2>议题收敛曲线</h2><div class="legend">0%（发散）→ 100%（收敛）</div><div class="chart">${convergenceSVG}</div>` : ''}
 
   <h2>行动建议</h2>
   <ol>${report.actions.map((a) => `<li>${esc(a)}</li>`).join('')}</ol>
