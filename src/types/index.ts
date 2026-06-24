@@ -86,6 +86,8 @@ export interface RoundSummary {
   viewpoints: RoundViewpoint[];
   /** 本轮议题收敛度 ∈ [0,1] */
   convergence: number;
+  /** 本轮用时（毫秒） */
+  elapsedMs?: number;
 }
 
 export interface Session {
@@ -102,6 +104,8 @@ export interface Session {
   currentRound: number;
   maxRounds: number;
   startedAt: number;
+  /** 辩论整体用时（毫秒），结束时计算 */
+  totalElapsedMs?: number;
   paused: boolean;
 }
 

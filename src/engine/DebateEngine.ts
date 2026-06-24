@@ -26,6 +26,20 @@ import { logger, logBreakpoint } from '@/engine/logger';
 const uid = () => Math.random().toString(36).slice(2, 11);
 const delay = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
 
+/** 毫秒 → 「1分23秒」/「45秒」可读时长。 */
+/** 毫秒 → 可读时长。每轮用整数分钟；整体 <1h 用分钟、≥1h 用小时分钟。 */
+const formatDuration = (ms: number, mode: 'round' | 'total' = 'round'): string => {
+  const totalMin = Math.max(0, Math.round(ms / 60000));
+  if (mode === 'round') {
+    return `${totalMin} 分钟`;
+  }
+  // total
+  if (totalMin < 60) return `${totalMin} 分钟`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h} 小时 ${m} 分钟`;
+};
+
 // 每个频道内每个 Agent 的独立历史：sessionId -> (agentId -> messages[])
 const sessionMemory = new Map<string, Map<string, ChatMessage[]>>();
 // 每个频道的用户介入队列
@@ -404,13 +418,13 @@ async function summarizeRound(
       finalVp = extractiveCompress(originText);
     }
 
-    finalVp = truncateViewpoint(finalVp, 40);
+    const fullVp = finalVp.replace(/\s+/g, ' ').trim();
     return {
       agentId: sp.agentId,
       name,
       stance: sp.stance,
-      viewpoint: finalVp,
-      viewpointFull: finalVp,
+      viewpoint: truncateViewpoint(fullVp, 40),
+      viewpointFull: fullVp,
       evidenceCount: sp.sources?.length ?? 0,
     };
   };
@@ -715,10 +729,12 @@ export const DebateEngine = {
     });
 
     const cfg = getLLMConfig()!;
+    const debateStart = Date.now();
 
     for (let r = 1; r <= session.maxRounds; r++) {
       if (isStopped()) return;
       await waitIfPaused();
+      const roundStart = Date.now();
       setCurrentRound(r);
       logger.info('DebateEngine', `第 ${r}/${session.maxRounds} 轮开始`);
 
@@ -818,14 +834,15 @@ export const DebateEngine = {
       }
 
       if (isStopped()) return;
+      const roundElapsed = Date.now() - roundStart;
       pushEvent({
         id: uid(),
         ts: Date.now(),
         agentId: 'system',
         type: 'system',
-        payload: { text: `第 ${r} 轮结束。` },
+        payload: { text: `第 ${r} 轮结束（用时 ${formatDuration(roundElapsed)}）。` },
       });
-      logger.info('DebateEngine', `第 ${r}/${session.maxRounds} 轮结束`);
+      logger.info('DebateEngine', `第 ${r}/${session.maxRounds} 轮结束`, { elapsedMs: roundElapsed });
       await delay(400);
 
       // 系统总结本轮观点演进
@@ -837,13 +854,14 @@ export const DebateEngine = {
         if (roundSpeeches.length) {
           try {
             const rs = await summarizeRound(r, `第 ${r} 轮`, roundSpeeches, agents, cfg, prevRound);
+            rs.elapsedMs = roundElapsed;
             useSessionStore.getState().pushRoundSummary(rs);
             pushEvent({
               id: uid(),
               ts: Date.now(),
               agentId: 'system',
               type: 'round-summary',
-              payload: { text: rs.digest, subText: `${rs.title} · 收敛度 ${(rs.convergence * 100).toFixed(0)}%`, round: r },
+              payload: { text: rs.digest, subText: `${rs.title} · 收敛度 ${(rs.convergence * 100).toFixed(0)}% · 用时 ${formatDuration(roundElapsed)}`, round: r },
             });
           } catch (e) {
             // 静默降级，不阻断后续轮次
@@ -853,12 +871,14 @@ export const DebateEngine = {
       }
     }
 
+    const totalElapsed = Date.now() - debateStart;
+    useSessionStore.getState().setTotalElapsedMs(totalElapsed);
     pushEvent({
       id: uid(),
       ts: Date.now(),
       agentId: 'system',
       type: 'system',
-      payload: { text: '全部轮次结束。可点击「生成报告」汇总结论。' },
+      payload: { text: `全部轮次结束（总用时 ${formatDuration(totalElapsed, 'total')}）。可点击「生成报告」汇总结论。` },
     });
     // 辩论结束，回到 idle，否则 UI 仍显示「进行中」
     setPhase('idle');

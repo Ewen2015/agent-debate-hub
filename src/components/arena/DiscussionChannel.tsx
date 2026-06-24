@@ -6,6 +6,7 @@ import {
   Brain,
   ChevronDown,
   ChevronUp,
+  Clock,
   GitCompareArrows,
   Hash,
   MessageSquare,
@@ -40,6 +41,11 @@ const STANCE_META: Record<AgentStance, { label: string; tone: Tone; color: strin
 const formatTime = (ts: number) => {
   const d = new Date(ts);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
+const formatElapsed = (ms: number): string => {
+  const min = Math.max(0, Math.round(ms / 60000));
+  return `${min} 分钟`;
 };
 
 const channelNameFromQuestion = (question: string) => {
@@ -407,6 +413,7 @@ function EventMessage({ event, agents }: { event: DebateEvent; agents: RosterAge
         title={title}
         digest={event.payload.text || rs?.digest || ''}
         convergence={convergence}
+        elapsedMs={rs?.elapsedMs}
         viewpoints={viewpoints}
         round={round ?? 0}
         speeches={speeches}
@@ -534,6 +541,7 @@ function RoundSummaryCard({
   title,
   digest,
   convergence,
+  elapsedMs,
   viewpoints,
   round,
   speeches,
@@ -542,6 +550,7 @@ function RoundSummaryCard({
   title: string;
   digest: string;
   convergence?: number;
+  elapsedMs?: number;
   viewpoints: RoundViewpoint[];
   round: number;
   speeches: Speech[];
@@ -567,16 +576,26 @@ function RoundSummaryCard({
       </div>
 
       {/* 收敛度行（独立一行，避免窄屏挤压） */}
-      {typeof convergence === 'number' && (
-        <div className="mt-1.5 flex items-center gap-2 text-[10px] text-[var(--text-muted)]">
-          <span>收敛度</span>
-          <span className="relative inline-block w-24 h-1.5 rounded-full bg-[var(--bg-card-strong)] overflow-hidden align-middle">
-            <span
-              className="absolute left-0 top-0 h-full rounded-full bg-[var(--accent-gold)]"
-              style={{ width: `${Math.round(convergence * 100)}%` }}
-            />
-          </span>
-          <span className="font-mono text-[var(--accent-gold)]">{(convergence * 100).toFixed(0)}%</span>
+      {(typeof convergence === 'number' || typeof elapsedMs === 'number') && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px] text-[var(--text-muted)]">
+          {typeof convergence === 'number' && (
+            <>
+              <span>收敛度</span>
+              <span className="relative inline-block w-24 h-1.5 rounded-full bg-[var(--bg-card-strong)] overflow-hidden align-middle">
+                <span
+                  className="absolute left-0 top-0 h-full rounded-full bg-[var(--accent-gold)]"
+                  style={{ width: `${Math.round(convergence * 100)}%` }}
+                />
+              </span>
+              <span className="font-mono text-[var(--accent-gold)]">{(convergence * 100).toFixed(0)}%</span>
+            </>
+          )}
+          {typeof elapsedMs === 'number' && (
+            <span className="inline-flex items-center gap-1 ml-auto">
+              <Clock size={10} />
+              用时 {formatElapsed(elapsedMs)}
+            </span>
+          )}
         </div>
       )}
 
@@ -593,11 +612,11 @@ function RoundSummaryCard({
           {viewpoints.map((v) => {
             const isExpanded = expanded === v.agentId;
             const origSpeech = fullTextOf(v.agentId);
-            const isFallback = v.viewpoint.includes('未能提炼');
-            const isTruncated = v.viewpoint.endsWith('…') && v.viewpointFull;
-            // 被截断 → 展开看完整提炼观点；降级 → 展开看原发言
-            const canExpand = isTruncated || (isFallback && Boolean(origSpeech));
-            const expandedContent = isTruncated ? v.viewpointFull! : origSpeech;
+            const isFallback = v.viewpoint.includes('未能提炼') || v.viewpoint.includes('发言为空') || v.viewpoint.includes('发言过短');
+            // 被截断且有完整版 → 展开看完整提炼观点；降级 → 展开看原发言
+            const hasFull = Boolean(v.viewpointFull) && v.viewpointFull !== v.viewpoint;
+            const canExpand = hasFull || (isFallback && Boolean(origSpeech));
+            const expandedContent = hasFull ? v.viewpointFull! : origSpeech;
             return (
               <div
                 key={v.agentId + v.name}

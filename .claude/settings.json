@@ -25,7 +25,11 @@
       "Bash(lsof -ti:5173)",
       "Bash(pkill -f \"vite --port 5173\")",
       "Bash(pkill -f \"npm exec vite\")",
-      "Bash(xargs kill -9)"
+      "Bash(xargs kill -9)",
+      "Bash(echo \"exit $?\")",
+      "Bash(awk '/setCurrentRound:/{print NR\": \"$0}' src/store/sessionStore.ts)",
+      "Bash(awk '/event.type === .round-summary./{f=1} f{print NR\": \"$0} /RoundSummaryCard/{if\\(f\\){exit}}' src/components/arena/DiscussionChannel.tsx)",
+      "Bash(awk 'NR>=3 && NR<=17' src/components/arena/DiscussionChannel.tsx)"
     ]
   }
 }
