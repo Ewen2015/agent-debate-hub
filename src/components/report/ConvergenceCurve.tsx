@@ -7,9 +7,9 @@ import type { RoundSummary } from '@/types';
  * 数据来源：session.roundSummaries 每轮的 convergence ∈ [0,1]。
  * 展示辩论各轮的收敛度轨迹，帮助判断「讨论是否在向共识收敛」。
  */
-export function ConvergenceCurve({ rounds }: { rounds: RoundSummary[] }) {
+export function ConvergenceCurve({ rounds }: { rounds?: RoundSummary[] }) {
   const points = useMemo(
-    () => rounds.map((r) => ({ label: r.title, value: r.convergence })),
+    () => (rounds || []).map((r) => ({ label: r.title, value: r.convergence })),
     [rounds],
   );
 

@@ -33,11 +33,13 @@ interface UIState {
   rosterDrawerOpen: boolean;
   gatewayDrawerOpen: boolean;
   reportDrawerOpen: boolean;
+  logDrawerOpen: boolean;
   questionPanelCollapsed: boolean;
   activeAgentId: string | null;
   setRosterDrawer: (v: boolean) => void;
   setGatewayDrawer: (v: boolean) => void;
   setReportDrawer: (v: boolean) => void;
+  setLogDrawer: (v: boolean) => void;
   toggleQuestionPanel: () => void;
   setActiveAgent: (id: string | null) => void;
 }
@@ -71,11 +73,13 @@ export const useUIStore = create<UIState>()((set) => ({
   rosterDrawerOpen: false,
   gatewayDrawerOpen: false,
   reportDrawerOpen: false,
+  logDrawerOpen: false,
   questionPanelCollapsed: false,
   activeAgentId: null,
   setRosterDrawer: (v) => set({ rosterDrawerOpen: v }),
   setGatewayDrawer: (v) => set({ gatewayDrawerOpen: v }),
   setReportDrawer: (v) => set({ reportDrawerOpen: v }),
+  setLogDrawer: (v) => set({ logDrawerOpen: v }),
   toggleQuestionPanel: () =>
     set((s) => ({ questionPanelCollapsed: !s.questionPanelCollapsed })),
   setActiveAgent: (id) => set({ activeAgentId: id }),

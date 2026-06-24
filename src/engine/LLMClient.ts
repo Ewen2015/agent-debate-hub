@@ -16,6 +16,7 @@
  */
 
 import { buildProxiedUrl } from './proxyUrl';
+import { logger } from './logger';
 
 export type ProviderKind = 'openai' | 'anthropic' | 'ark-coding';
 
@@ -147,9 +148,13 @@ async function fetchWithRetry(
   init: RequestInit,
   opts: { signal?: AbortSignal } = {},
 ): Promise<Response> {
+  const startTime = Date.now();
   let lastErr: unknown;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    if (opts.signal?.aborted) throw new Error('aborted');
+    if (opts.signal?.aborted) {
+      logger.warn('LLMClient', '请求被中止（用户停止）', { url: url.replace(/^.*\/\//, ''), attempt });
+      throw new Error('aborted');
+    }
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
     // 联动外部 signal（用户停止）
@@ -160,27 +165,38 @@ async function fetchWithRetry(
     try {
       const res = await fetch(url, { ...init, signal: ctrl.signal });
       clearTimeout(timer);
-      // 4xx（除 429）是业务错误，不重试
-      if (res.status >= 400 && res.status < 500 && res.status !== 429) return res;
-      // 5xx / 429 可重试
+      const elapsed = Date.now() - startTime;
+
+      if (res.status >= 400 && res.status < 500 && res.status !== 429) {
+        logger.error('LLMClient', `LLM 返回 ${res.status}`, { url: url.replace(/^.*\/\//, ''), status: res.status, elapsed, attempt });
+        return res;
+      }
       if (res.status >= 500 || res.status === 429) {
+        logger.warn('LLMClient', `LLM 返回 ${res.status}，将重试`, { status: res.status, elapsed, attempt, willRetry: attempt < MAX_RETRIES });
         if (attempt < MAX_RETRIES) {
           await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
           continue;
         }
       }
+      logger.info('LLMClient', 'LLM 请求完成', { status: res.status, elapsed, attempt });
       return res;
     } catch (e: any) {
       clearTimeout(timer);
+      const elapsed = Date.now() - startTime;
       lastErr = e;
       // aborted 由外部 signal 触发 → 不重试，直接抛
-      if (opts.signal?.aborted) throw e;
+      if (opts.signal?.aborted) {
+        logger.warn('LLMClient', '请求被中止', { elapsed, attempt });
+        throw e;
+      }
+      logger.warn('LLMClient', `网络错误，将重试`, { error: e?.message, elapsed, attempt, willRetry: attempt < MAX_RETRIES });
       if (attempt < MAX_RETRIES) {
         await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
         continue;
       }
     }
   }
+  logger.error('LLMClient', '请求最终失败（重试耗尽）', { url: url.replace(/^.*\/\//, ''), error: lastErr instanceof Error ? lastErr.message : String(lastErr) });
   throw lastErr instanceof Error ? lastErr : new Error('请求失败');
 }
 
@@ -289,17 +305,21 @@ async function chatOpenAI(
     .filter((x: any) => x.name);
 
   // Ark 联网搜索由 chatArkResponses 处理，此处仅处理 OpenAI 兼容 function tool
+  const usage = data.usage
+    ? {
+        promptTokens: data.usage.prompt_tokens,
+        completionTokens: data.usage.completion_tokens,
+        reasoningTokens: data.usage.completion_tokens_details?.reasoning_tokens,
+      }
+    : undefined;
+  if (usage) {
+    logger.debug('LLMClient', 'Token 用量', { model: cfg.model, ...usage, toolCalls: toolCalls?.length || 0 });
+  }
   return {
     content: msg.content || '',
     reasoning,
     toolCalls: toolCalls?.length ? toolCalls : undefined,
-    usage: data.usage
-      ? {
-          promptTokens: data.usage.prompt_tokens,
-          completionTokens: data.usage.completion_tokens,
-          reasoningTokens: data.usage.completion_tokens_details?.reasoning_tokens,
-        }
-      : undefined,
+    usage,
   };
 }
 
@@ -439,16 +459,20 @@ async function chatAnthropic(
   // 去掉原生 web_search 的 tool_use（server_tool_use 不需要客户端执行）
   const clientToolCalls = toolCalls.filter((tc) => tc.name !== 'web_search');
 
+  const usage = data.usage
+    ? {
+        promptTokens: data.usage.input_tokens,
+        completionTokens: data.usage.output_tokens,
+      }
+    : undefined;
+  if (usage) {
+    logger.debug('LLMClient', 'Token 用量（Anthropic）', { model: cfg.model, ...usage, sources: sources.length });
+  }
   return {
     content,
     reasoning,
     toolCalls: clientToolCalls.length ? clientToolCalls : undefined,
     sources: sources.length ? sources : undefined,
-    usage: data.usage
-      ? {
-          promptTokens: data.usage.input_tokens,
-          completionTokens: data.usage.output_tokens,
-        }
-      : undefined,
+    usage,
   };
 }

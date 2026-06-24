@@ -21,6 +21,7 @@ import { useRosterStore } from '@/store/staticStores';
 import { useSessionStore } from '@/store/sessionStore';
 import type { DebateEvent, RosterAgent, RoundSummary, RoundViewpoint, Source, Speech } from '@/types';
 import { isSearchResolverConfigured, resolveSource } from '@/engine/SearchResolver';
+import { logger, logBreakpoint } from '@/engine/logger';
 
 const uid = () => Math.random().toString(36).slice(2, 11);
 const delay = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
@@ -213,12 +214,6 @@ function sanitizeThinking(text: string): string {
     .trim();
 }
 
-const truncateViewpoint = (s: string, max = 30) => {
-  const t = stripLLMArtifacts(s || '').replace(/\s+/g, ' ').trim();
-  if (t.length <= max) return t;
-  return t.slice(0, max) + '…';
-};
-
 /**
  * 每轮结束后由系统总结「本轮观点演进」。
  * 复用主 LLM 配置做一次轻量 chat 调用，要求严格 JSON 输出。
@@ -303,7 +298,8 @@ async function summarizeRound(
         { role: 'user', content: user },
       ], { signal: ctrl.signal });
       return stripLLMArtifacts(resp.content || '');
-    } catch {
+    } catch (e) {
+      logger.warn('chatWithTimeout', '总结调用失败（静默降级）', { round, error: e instanceof Error ? e.message : String(e) });
       return null;
     } finally {
       clearTimeout(timer);
@@ -316,8 +312,8 @@ async function summarizeRound(
   const summarizeOneViewpoint = async (sp: Speech): Promise<RoundViewpoint> => {
     const name = nameOf(sp.agentId);
     const originText = stripLLMArtifacts(sp.text);
-    const sys = '你是严谨的辩论记录员。把给定发言浓缩成一句不超过 40 字的核心观点。\n要求：\n1. 用第三人称概括发言者的立场与主张；\n2. 必须用自己的话改写，严禁出现原文中任何连续 5 字以上的原句片段；\n3. 只输出观点本身，不要解释、引号、序号、标点前缀。';
-    const usr = `议题：${question}\n发言者：${name}（${sp.stance}）\n发言原文：\n${originText}\n\n请提炼一句不超过 40 字的核心观点（第三人称、用自己的话改写、禁止照搬原句连续片段）：`;
+    const sys = '你是严谨的辩论记录员。把给定发言浓缩成一句核心观点。\n要求：\n1. 用第三人称概括发言者的立场与主张；\n2. 必须用自己的话改写，严禁出现原文中任何连续 5 字以上的原句片段；\n3. 只输出观点本身，不要解释、引号、序号、标点前缀。';
+    const usr = `议题：${question}\n发言者：${name}（${sp.stance}）\n发言原文：\n${originText}\n\n请提炼一句核心观点（第三人称、用自己的话改写、禁止照搬原句连续片段）：`;
 
     const extractViewpoint = async (): Promise<string | null> => {
       const raw = await chatWithTimeout(sys, usr);
@@ -338,8 +334,8 @@ async function summarizeRound(
       agentId: sp.agentId,
       name,
       stance: sp.stance,
-      viewpoint: isQualityViewpoint(sp.agentId, vp ?? undefined) ? truncateViewpoint(vp!, 40) : '（未能提炼，见原发言）',
-      viewpointFull: isQualityViewpoint(sp.agentId, vp ?? undefined) ? (vp || '').replace(/\s+/g, ' ').trim() : undefined,
+      viewpoint: isQualityViewpoint(sp.agentId, vp ?? undefined) ? (vp || '').replace(/\s+/g, ' ').trim() : '（未能提炼，见原发言）',
+      viewpointFull: undefined,
       evidenceCount: sp.sources?.length ?? 0,
     };
   };
@@ -350,13 +346,13 @@ async function summarizeRound(
     .join('\n\n');
 
   const digestTask = (async (): Promise<string> => {
-    const sys = '你是严谨的辩论记录员。用一句话（不超过 40 字）总结本轮各发言者观点的演进或交锋。必须用自己的话凝练概括，严禁出现原文中任何连续 5 字以上的原句片段。只输出总结本身。';
-    const usr = `议题：${question}\n本轮发言：\n${transcripts}\n\n请用一句话总结本轮观点的演进或交锋（≤40字）：`;
+    const sys = '你是严谨的辩论记录员。用一句话总结本轮各发言者观点的演进或交锋。必须用自己的话凝练概括，严禁出现原文中任何连续 5 字以上的原句片段。只输出总结本身。';
+    const usr = `议题：${question}\n本轮发言：\n${transcripts}\n\n请用一句话总结本轮观点的演进或交锋：`;
     const raw = await chatWithTimeout(sys, usr);
     let d = (raw || '').split(/\r?\n/).map((s) => s.trim()).find((s) => s.length > 0) || (raw || '').trim();
     d = d.replace(/^[「『""'']+|[」』""'']+$/g, '').trim();
     const ok = d.length >= 4 && speeches.every((sp) => jaccard(tokenize(d), origTokens.get(sp.agentId) ?? new Set()) < 0.7);
-    return ok ? truncateViewpoint(d, 40) : `${title}观点总结`;
+    return ok ? d : `${title}观点总结`;
   })();
 
   const [viewpoints, digest] = await Promise.all([
@@ -500,6 +496,7 @@ export const DebateEngine = {
     const cfg = getLLMConfig()!;
 
     const agents = useRosterStore.getState().agents;
+    logger.info('DebateEngine', 'Brainstorm 启动', { question: session.question, agentsCount: agents.length });
 
     // Brainstorm：各 Agent 互不引用、独立历史，可并发调用以加速
     const runOneAgent = async (agent: RosterAgent) => {
@@ -562,7 +559,9 @@ export const DebateEngine = {
         history.push({ role: 'assistant', content: result.final });
         // 持久化记忆到 localStorage
         persistAgentMemory(agent.id);
+        logger.info('DebateEngine', 'Agent 发言完成', { phase: 'brainstorm', agentId: agent.id, agentName: persona.name, sourcesCount: result.sources.length });
       } catch (e: any) {
+        logger.error('DebateEngine', 'Agent 发言失败', { phase: 'brainstorm', agentId: agent.id, agentName: persona.name, error: e?.message });
         pushEvent({
           id: uid(),
           ts: Date.now(),
@@ -598,8 +597,9 @@ export const DebateEngine = {
           type: 'round-summary',
           payload: { text: rs.digest, subText: `${rs.title} · 收敛度 ${(rs.convergence * 100).toFixed(0)}%`, round: 0 },
         });
-      } catch {
+      } catch (e) {
         // 静默降级
+        logger.warn('DebateEngine', 'Brainstorm 轮总结失败（降级）', { error: e instanceof Error ? e.message : String(e) });
       }
     }
 
@@ -630,9 +630,7 @@ export const DebateEngine = {
     const { session, setPhase, setCurrentRound } = useSessionStore.getState();
     setPhase('debate');
     setCurrentRound(0);
-
-    // 从 sessionStore 恢复 Brainstorm 阶段积累的记忆
-    loadMemoryFromStore();
+    logger.info('DebateEngine', 'Debate 启动', { maxRounds: session.maxRounds, question: session.question });
 
     pushEvent({
       id: uid(),
@@ -648,6 +646,7 @@ export const DebateEngine = {
       if (isStopped()) return;
       await waitIfPaused();
       setCurrentRound(r);
+      logger.info('DebateEngine', `第 ${r}/${session.maxRounds} 轮开始`);
 
       pushEvent({
         id: uid(),
@@ -730,7 +729,9 @@ export const DebateEngine = {
           history.push({ role: 'assistant', content: result.final });
           // 持久化记忆
           persistAgentMemory(agent.id);
+          logger.info('DebateEngine', 'Agent 发言完成', { round: r, agentId: agent.id, agentName: persona.name, sourcesCount: result.sources.length });
         } catch (e: any) {
+          logger.error('DebateEngine', 'Agent 发言失败', { round: r, agentId: agent.id, agentName: persona.name, error: e?.message });
           pushEvent({
             id: uid(),
             ts: Date.now(),
@@ -750,6 +751,7 @@ export const DebateEngine = {
         type: 'system',
         payload: { text: `第 ${r} 轮结束。` },
       });
+      logger.info('DebateEngine', `第 ${r}/${session.maxRounds} 轮结束`);
       await delay(400);
 
       // 系统总结本轮观点演进
@@ -769,8 +771,9 @@ export const DebateEngine = {
               type: 'round-summary',
               payload: { text: rs.digest, subText: `${rs.title} · 收敛度 ${(rs.convergence * 100).toFixed(0)}%`, round: r },
             });
-          } catch {
+          } catch (e) {
             // 静默降级，不阻断后续轮次
+            logger.warn('DebateEngine', `第 ${r} 轮总结失败（降级）`, { round: r, error: e instanceof Error ? e.message : String(e) });
           }
         }
       }
@@ -927,6 +930,7 @@ export const DebateEngine = {
         type: 'system',
         payload: { text: `第 ${r} 轮结束。` },
       });
+      logger.info('DebateEngine', `第 ${r}/${session.maxRounds} 轮结束`);
       await delay(400);
 
       if (!isStopped()) {
@@ -971,6 +975,15 @@ export const DebateEngine = {
     useSessionStore.getState().setPaused(false);
   },
   async stop() {
+    const session = useSessionStore.getState().session;
+    logBreakpoint('DebateEngine', '用户手动停止', {
+      phase: session.phase,
+      round: session.currentRound,
+      maxRounds: session.maxRounds,
+      sessionId: session.id,
+      speechesCount: session.speeches.length,
+      eventsCount: session.events.length,
+    });
     useSessionStore.getState().setPaused(false);
     useSessionStore.getState().setPhase('idle');
     pushEvent({

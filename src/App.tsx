@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Hash, Plus, Trash2, Check, Edit3, UserMinus } from 'lucide-react';
+import { Hash, Plus, Trash2, Check, Edit3, UserMinus, Terminal } from 'lucide-react';
 import { useUIStore, useRosterStore, useGatewayStore } from '@/store/staticStores';
 import { useSessionStore } from '@/store/sessionStore';
 import { resolvePersona } from '@/engine/MockLLM';
@@ -12,6 +12,7 @@ import { GatewayPanel } from '@/components/gateway/GatewayPanel';
 import { ReportPanel } from '@/components/report/ReportPanel';
 import { ReportModal } from '@/components/report/ReportModal';
 import { ReportPrintView } from '@/components/report/ReportPrintView';
+import { LogPanel } from '@/components/dev/LogPanel';
 import { Drawer } from '@/components/shared/Drawer';
 
 export default function App() {
@@ -19,9 +20,11 @@ export default function App() {
     rosterDrawerOpen,
     gatewayDrawerOpen,
     reportDrawerOpen,
+    logDrawerOpen,
     setRosterDrawer,
     setGatewayDrawer,
     setReportDrawer,
+    setLogDrawer,
   } = useUIStore();
 
   const phase = useSessionStore((s) => s.session.phase);
@@ -78,6 +81,17 @@ export default function App() {
         width="w-[460px]"
       >
         <GatewayPanel />
+      </Drawer>
+
+      <Drawer
+        open={logDrawerOpen}
+        onClose={() => setLogDrawer(false)}
+        title="Logs"
+        subtitle="运行日志"
+        side="right"
+        width="w-[520px]"
+      >
+        <LogPanel />
       </Drawer>
 
       {/* 报告改为居中模态预览，不再使用右侧抽屉 */}

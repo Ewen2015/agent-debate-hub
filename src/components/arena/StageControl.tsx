@@ -20,6 +20,7 @@ export function StageControl() {
   const setRoster = useUIStore((s) => s.setRosterDrawer);
   const setGateway = useUIStore((s) => s.setGatewayDrawer);
   const setReportDrawer = useUIStore((s) => s.setReportDrawer);
+  const setLogDrawer = useUIStore((s) => s.setLogDrawer);
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggle);
   const [busy, setBusy] = useState<string | null>(null);
@@ -304,6 +305,13 @@ export function StageControl() {
             className="rounded-lg border border-[var(--border-soft)] bg-[var(--bg-card)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-gold)]/40 transition-all"
           >
             Gateway
+          </button>
+          <button
+            type="button"
+            onClick={() => setLogDrawer(true)}
+            className="rounded-lg border border-[var(--border-soft)] bg-[var(--bg-card)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-cyan)]/40 transition-all"
+          >
+            Logs
           </button>
         </div>
       </div>
