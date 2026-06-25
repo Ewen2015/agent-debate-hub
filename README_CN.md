@@ -48,11 +48,15 @@ Group Debate Agent Hub 是一个本地前端原型，用于编排一组拥有独
 
 **Brainstorm**（`startBrainstorm`）：串行发散式一轮。每个 Agent 独立从自身人设视角提出 1–2 个角度，并明确要求**不要重复前面 Agent 的视角**。第 0 轮发言为辩论播下种子。
 
-**Debate**（`enterDebate`）：多轮对抗循环（2–5 轮可配）。每轮中，每个 Agent 收到一条 `user` 消息，其中包含**上一轮所有其他 Agent 的发言**外加辩论指令。Agent 必须回应至少一个对方观点，可调用 `web_search`，且不得复读自己先前的论点。记忆跨轮累积，阶段进入时从 store 重新加载。
+**Debate**（`enterDebate`）：多轮对抗循环（1–100 轮可配）。每轮中，每个 Agent 收到一条 `user` 消息，其中包含**上一轮所有其他 Agent 的发言**外加辩论指令。Agent 必须回应至少一个对方观点，可调用 `web_search`，且不得复读自己先前的论点。记忆跨轮累积，阶段进入时从 store 重新加载。
+
+**追加辩论**（`continueDebate`）：辩论结束后可追加若干轮，**沿用已有轮次编号续编**（如原 1–3 轮 → 追加 → 第 4、5… 轮），复用累积的 Agent 记忆而不重置。追加选择提供 10 / 20 快捷按钮，外加 1–100 的手动输入。
 
 **Report**（`ReportBuilder.build`）：对发言记录做两种压缩：
 - **模板版**按关键词主题聚类（机会与价值 / 风险与边界 / 用户与体验 / 数据与证据 / 战略与时机 / 伦理与治理），逐主题统计支持 / 反对者，并据此推导共识（支持率 ≥55% 且零反对）与分歧，外加具体行动建议。
 - **LLM 版**（配置了 Provider 时）把完整记录连同严格 JSON schema 喂给模型，覆盖模板版的 TL;DR / 总结 / 共识 / 分歧 / 评述 / 行动建议，产出更贴合内容的报告。任何错误时回退到模板版。
+
+每轮还会产出一份 **RoundSummary**（摘要 + 每位 Agent 一句提炼观点 + 收敛度），驱动**观点演进图**（按轮次铺开的多栏观点流变视图）与**收敛曲线**（收敛度随轮次变化的折线图）。每轮及总用时被追踪并在摘要与事件流中展示。报告可导出为带内联 CSS 与 SVG 的独立 **HTML 文件**。
 
 ### 4. 证据与搜索
 
@@ -79,13 +83,16 @@ Group Debate Agent Hub 是一个本地前端原型，用于编排一组拥有独
 - 可配置 Agent 人设：名称、立场、语气、关注点、论风
 - 2–8 名 Agent 会话，支持从预置人设自动补全
 - Brainstorm 与 Debate 阶段，实时事件流与发言流
-- 多轮辩论支持（2–5 轮）
+- 多轮辩论支持（1–100 轮），辩论结束后可**追加辩论**续接轮次编号
+- 每轮及总用时追踪
 - 基于 `src/engine/LLMClient.ts` 的 Provider 驱动 LLM 执行
 - 通过 Anthropic/Ark 原生搜索或 Tavily/Serper 函数工具支持搜索
 - 运行中随时插入人类指令
 - 暂停 / 继续 / 终止 / 重新开始
 - Provider 模板：OpenAI / Anthropic / DeepSeek / Moonshot / Ollama / Custom
-- 生成结构化报告：共识、分歧、关键观点、行动建议
+- 生成结构化报告：共识、分歧、关键观点、行动建议、观点演进图、收敛曲线
+- HTML 报告导出（内联 CSS 与 SVG）
+- 运行时日志系统及 UI 日志查看器
 - 使用 `localStorage` 本地持久化
 
 ## 快速开始
@@ -121,19 +128,22 @@ pnpm preview
 src/
 ├── components/
 │   ├── arena/        # 议场 UI：AgentRing、EventStream、SpeechStream、StageControl
+│   ├── dev/          # 开发面板：LogPanel（运行时日志查看器）
 │   ├── gateway/      # 模型 Provider 配置
 │   ├── question/     # 议题编辑与提示设置
-│   ├── report/       # 报告面板
+│   ├── report/       # 报告面板、观点演进图、收敛曲线
 │   ├── roster/       # Agent 人设列表
 │   └── shared/       # 可复用组件
 ├── data/             # 人设预设与模拟资料数据
-├── engine/           # 辩论引擎、Mock LLM、代理配置、报告生成器
-├── hooks/            # 自定义 Hook
+├── engine/           # DebateEngine、LLMClient/LLMConfig、SearchResolver、ReportBuilder、
+│                     # 收敛度计算、日志、文本工具、代理 URL
 ├── store/            # Zustand 状态与持久化
 ├── styles/           # 全局样式与主题
 ├── types/            # TypeScript 类型
 └── main.tsx          # 应用入口
 ```
+
+E2E / 探测脚本位于 `scripts/`（`e2e-*.cjs`、`probe-*.cjs`、`test-ark-*.mjs`）。
 
 ## 运行说明
 
@@ -153,10 +163,8 @@ src/
 
 ## 路线图
 
-- 真实 LLM Provider 接入（OpenAI、Anthropic、DeepSeek）
-- 外部 API 搜索 / 证据检索
-- 多议题会话管理
-- 报告 PDF 导出
+- 团队**与**任务的 Markdown 可移植 —— 超越辩论泛化：团队（花名册：人设、立场、关注点）与团队要做的事情都可序列化为可移植的 `.md` 文件（工作名 `team-engineering.md`），可分享、版本化并在跨会话间重新导入。任务不限于辩论，规划中的类型包括推演（wargame）、圆桌讨论（roundtable）、合作开发（collab）
+- 可插拔的任务运行器 —— 每种任务类型一个独立 runner（如 `DebateRunner`、`WargameRunner`、`RoundtableRunner`、`CollabRunner`），共享统一的团队、记忆与事件层，新增任务类型无需改动既有 runner
 - WebSocket 协作和实时共享
 - 音频 / 文本回放
 

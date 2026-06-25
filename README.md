@@ -49,11 +49,15 @@ The system prompt enforces five debate disciplines: (1) think first, (2) **cross
 
 **Brainstorm** (`startBrainstorm`): sequential divergent pass. Each agent independently proposes 1–2 angles from its persona's lens, with an explicit instruction *not* to repeat prior agents' perspectives. Round 0 speeches seed the debate.
 
-**Debate** (`enterDebate`): multi-round adversarial loop (2–5 rounds, configurable). Each round, every agent receives a `user` message containing **the previous round's speeches from all other agents** plus the debate directive. Agents must respond to at least one opposing argument, may call `web_search`, and cannot parrot their own prior points. Memory accumulates across rounds and is reloaded from store on phase entry.
+**Debate** (`enterDebate`): multi-round adversarial loop (1–100 rounds, configurable). Each round, every agent receives a `user` message containing **the previous round's speeches from all other agents** plus the debate directive. Agents must respond to at least one opposing argument, may call `web_search`, and cannot parrot their own prior points. Memory accumulates across rounds and is reloaded from store on phase entry.
+
+**Continue Debate** (`continueDebate`): after a debate ends, append extra rounds that **continue the existing round numbering** (e.g. rounds 1–3 → append → rounds 4, 5…), reusing accumulated agent memory without resetting. The append picker offers 10 / 20 quick buttons plus a 1–100 manual input.
 
 **Report** (`ReportBuilder.build`): the transcript is condensed two ways:
 - A **template pass** clusters speeches by keyword themes (机会与价值 / 风险与边界 / 用户与体验 / 数据与证据 / 战略与时机 / 伦理与治理), tallies pro/con supporters per theme, and derives consensus (≥55% support, 0 opposition) vs. disagreement plus concrete action items.
 - An **LLM pass** (when a provider is configured) feeds the full transcript to the model with a strict-JSON schema, overriding the template's TL;DR / summary / consensus / disagreements / evaluation / actions for a tighter, content-grounded report. It falls back to the template on any error.
+
+Each round also produces a **RoundSummary** (digest + one distilled viewpoint per agent + convergence score), which powers the **Argument Evolution Graph** (per-round columns of shifting viewpoints) and the **Convergence Curve** (a convergence-over-rounds line chart). Per-round and total elapsed time are tracked and surfaced in the summary and event stream. Reports can be exported as a standalone **HTML file** with inline CSS and SVG.
 
 ### 4. Evidence & search
 
@@ -80,13 +84,16 @@ All memory, interrupt buffers, events, and speeches are scoped to `activeSession
 - Configurable agent personas: name, stance, tone, focus, and argument style
 - 2–8 agents per session, with auto-fill from persona presets
 - Brainstorm and debate phases with live event and speech timelines
-- Multi-round debate support (2–5 rounds)
+- Multi-round debate support (1–100 rounds), with post-debate **continue debate** that extends the round numbering
+- Per-round and total elapsed-time tracking
 - Provider-backed LLM execution via `src/engine/LLMClient.ts`
 - Search support through Anthropic/Ark native search or Tavily/Serper function tool
 - Human intervention commands during live sessions
 - Pause / resume / stop / restart controls
 - Provider templates for OpenAI / Anthropic / DeepSeek / Moonshot / Ollama / Custom
-- Structured report generation with consensus, disagreement, key arguments, and recommended actions
+- Structured report generation with consensus, disagreement, key arguments, recommended actions, argument evolution graph, and convergence curve
+- HTML report export with inline CSS and SVG
+- Runtime logging system with a UI log viewer
 - Local persistence via `localStorage`
 
 ## Quick Start
@@ -122,19 +129,22 @@ pnpm preview
 src/
 ├── components/
 │   ├── arena/        # Debate arena UI: AgentRing, EventStream, SpeechStream, StageControl
+│   ├── dev/          # Dev-only panels: LogPanel (runtime log viewer)
 │   ├── gateway/      # Model provider configuration
 │   ├── question/     # Topic editor and prompt controls
-│   ├── report/       # Summary report panel
+│   ├── report/       # Summary report panel, evolution graph, convergence curve
 │   ├── roster/       # Agent persona roster
 │   └── shared/       # Reusable UI components
 ├── data/             # Persona presets and mock evidence data
-├── engine/           # Debate engine, mock LLM, proxy config, report builder
-├── hooks/            # Custom hooks
+├── engine/           # DebateEngine, LLMClient/LLMConfig, SearchResolver, ReportBuilder,
+│                     # convergence scoring, logger, text utils, proxy URL
 ├── store/            # Zustand state and persistence stores
 ├── styles/           # Global CSS and theme styles
 ├── types/            # TypeScript types
 └── main.tsx          # Application entry point
 ```
+
+E2E / probe scripts live under `scripts/` (`e2e-*.cjs`, `probe-*.cjs`, `test-ark-*.mjs`).
 
 ## Runtime Notes
 
@@ -154,10 +164,8 @@ src/
 
 ## Roadmap
 
-- Real LLM provider integration (OpenAI, Anthropic, DeepSeek)
-- Search / evidence retrieval from external APIs
-- Multi-topic session management
-- PDF report export
+- Portable teams **and** tasks via Markdown — generalize beyond debate so that both the team (roster: personas, stances, focus) and what the team is tasked to do are serializable into a portable `.md` file (working name `team-engineering.md`), shareable / versionable / re-importable across sessions. Tasks are not limited to debate; planned types include wargame (推演), roundtable (圆桌讨论), and collab (合作开发)
+- Pluggable task runners — each task type gets its own runner (e.g. `DebateRunner`, `WargameRunner`, `RoundtableRunner`, `CollabRunner`) sharing a common team, memory, and event layer, so new task types can be added without touching existing ones
 - WebSocket-based collaboration and real-time sharing
 - Audio or transcript playback
 
