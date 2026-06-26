@@ -896,10 +896,12 @@ export const DebateEngine = {
     }
 
     const { session, setPhase, setCurrentRound, setMaxRounds } = useSessionStore.getState();
-    // 基于实际已完成的最大轮次续编，避免 maxRounds 被异常改写（如清空输入框）导致从头计数
+    // 续接基点 = 实际已完成的最大轮次（speeches 中的最大 round），而非 maxRounds。
+    // 中断后再追加必须从中断处继续：maxRounds 可能远大于实际进度（如设了 100 轮但在第 3 轮中断），
+    // 若以 maxRounds 为基点会跳到第 101 轮，跳过中间未完成的轮次。
+    // 同时天然防御 maxRounds 被异常改写（如清空输入框被重置为 1）：以 speeches 实际进度为准，与 maxRounds 无关。
     const maxRoundDone = session.speeches.reduce((m, s) => Math.max(m, s.round), 0);
-    const prevMaxRounds = Math.max(session.maxRounds, maxRoundDone);
-    const newMaxRounds = prevMaxRounds + additionalRounds;
+    const newMaxRounds = maxRoundDone + additionalRounds;
     setMaxRounds(newMaxRounds);
     setPhase('debate');
 
@@ -911,12 +913,12 @@ export const DebateEngine = {
       ts: Date.now(),
       agentId: 'system',
       type: 'system',
-      payload: { text: `追加辩论：第 ${prevMaxRounds + 1} - ${newMaxRounds} 轮（共 ${additionalRounds} 轮）。` },
+      payload: { text: `追加辩论：第 ${maxRoundDone + 1} - ${newMaxRounds} 轮（共 ${additionalRounds} 轮）。` },
     });
 
     const cfg = getLLMConfig()!;
 
-    for (let r = prevMaxRounds + 1; r <= newMaxRounds; r++) {
+    for (let r = maxRoundDone + 1; r <= newMaxRounds; r++) {
       if (isStopped()) return;
       await waitIfPaused();
       setCurrentRound(r);
@@ -1020,7 +1022,7 @@ export const DebateEngine = {
         type: 'system',
         payload: { text: `第 ${r} 轮结束。` },
       });
-      logger.info('DebateEngine', `第 ${r}/${session.maxRounds} 轮结束`);
+      logger.info('DebateEngine', `第 ${r}/${newMaxRounds} 轮结束`);
       await delay(400);
 
       if (!isStopped()) {

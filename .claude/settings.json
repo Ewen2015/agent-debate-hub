@@ -33,7 +33,9 @@
       "Bash(npx eslint *)",
       "Bash(git stash *)",
       "Bash(echo \"=== exit: $? ===\")",
-      "Bash(git --no-pager diff src/components/dev/LogPanel.tsx src/engine/LLMClient.ts)"
+      "Bash(git --no-pager diff src/components/dev/LogPanel.tsx src/engine/LLMClient.ts)",
+      "Bash(git --no-pager diff src/engine/DebateEngine.ts)",
+      "Bash(echo \"exit code: $?\")"
     ]
   }
 }
