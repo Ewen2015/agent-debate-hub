@@ -178,7 +178,7 @@ async function fetchWithRetry(
           continue;
         }
       }
-      logger.info('LLMClient', 'LLM 请求完成', { status: res.status, elapsed, attempt });
+      logger.debug('LLMClient', 'LLM 请求完成', { status: res.status, elapsed, attempt });
       return res;
     } catch (e: any) {
       clearTimeout(timer);

@@ -18,6 +18,9 @@ const LEVEL_LABEL: Record<LogLevel, string> = {
   error: 'ERR',
 };
 
+/** 级别阈值：过滤为某级时，展示该级及更高级别的日志（标准日志查看器语义）。 */
+const LEVEL_RANK: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error: 3 };
+
 function formatTime(ts: number) {
   const d = new Date(ts);
   const hh = String(d.getHours()).padStart(2, '0');
@@ -66,7 +69,7 @@ function LogItem({ entry }: { entry: LogEntry }) {
 
 export function LogPanel() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [filter, setFilter] = useState<LogLevel | 'all'>('all');
+  const [filter, setFilter] = useState<LogLevel | 'all'>('info');
 
   const refresh = useCallback(() => {
     setLogs(getAllLogs());
@@ -83,7 +86,10 @@ export function LogPanel() {
     refresh();
   };
 
-  const filtered = filter === 'all' ? logs : logs.filter((l) => l.level === filter);
+  const filtered =
+    filter === 'all' ? logs : logs.filter((l) => LEVEL_RANK[l.level] >= LEVEL_RANK[filter]);
+  // 最新日志排在最上面，便于快速判断进程是否正常
+  const reversed = filtered.slice().reverse();
   const errorCount = logs.filter((l) => l.level === 'error').length;
   const warnCount = logs.filter((l) => l.level === 'warn').length;
 
@@ -137,7 +143,7 @@ export function LogPanel() {
           </div>
         ) : (
           <div>
-            {filtered.map((entry) => (
+            {reversed.map((entry) => (
               <LogItem key={entry.id} entry={entry} />
             ))}
           </div>
