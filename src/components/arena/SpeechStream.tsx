@@ -14,10 +14,10 @@ const STANCE_COLOR: Record<AgentStance, string> = {
   neutral: '#6FB3A8',
 };
 
-const STANCE_LABEL: Record<AgentStance, { text: string; tone: 'gold' | 'rose' | 'cyan' }> = {
-  pro: { text: '支持', tone: 'gold' },
+const STANCE_LABEL: Record<AgentStance, { text: string; tone: 'primary' | 'rose' | 'emerald' }> = {
+  pro: { text: '支持', tone: 'primary' },
   con: { text: '反对', tone: 'rose' },
-  neutral: { text: '中立', tone: 'cyan' },
+  neutral: { text: '中立', tone: 'emerald' },
 };
 
 function SpeechCard({ sp, isLast }: { sp: Speech; isLast?: boolean }) {
@@ -87,13 +87,13 @@ function SpeechCard({ sp, isLast }: { sp: Speech; isLast?: boolean }) {
                 {sp.sources.map((s) => (
                   <li
                     key={s.url}
-                    className="text-[12px] text-[var(--text-primary)]/55 pl-3 border-l border-[var(--accent-cyan)]/30"
+                    className="text-[12px] text-[var(--text-primary)]/55 pl-3 border-l border-[var(--accent-emerald)]/30"
                   >
                     <a
                       href={s.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[var(--accent-cyan)]/85 hover:text-[var(--accent-cyan)] transition-colors"
+                      className="text-[var(--accent-emerald)]/85 hover:text-[var(--accent-emerald)] transition-colors"
                     >
                       {s.title}
                     </a>

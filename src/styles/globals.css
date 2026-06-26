@@ -4,43 +4,57 @@
 
 :root,
 [data-theme='light'] {
-  --bg-base: #F6F4EF;
+  --bg-base: #FAF9F5;
   --bg-elev: #FFFFFF;
-  --bg-soft: #F1EDE6;
-  --bg-card: rgba(255, 255, 255, 0.72);
-  --bg-card-strong: rgba(255, 255, 255, 0.9);
-  --border-soft: rgba(26, 26, 26, 0.08);
-  --border-strong: rgba(26, 26, 26, 0.16);
-  --text-primary: #1A1A1A;
-  --text-secondary: rgba(26, 26, 26, 0.72);
-  --text-muted: rgba(26, 26, 26, 0.52);
-  --text-soft: rgba(26, 26, 26, 0.68);
-  --accent-gold: #7A6A45;
-  --accent-cyan: #2C5F5D;
-  --accent-rose: #9F4A3C;
-  --accent-violet: #3E4A6B;
-  --shadow-card: 0 1px 0 0 rgba(26, 26, 26, 0.04), 0 4px 12px -4px rgba(26, 26, 26, 0.08), 0 12px 32px -12px rgba(26, 26, 26, 0.1);
-  --shadow-float: 0 1px 0 0 rgba(26, 26, 26, 0.05), 0 8px 24px -6px rgba(26, 26, 26, 0.12), 0 24px 48px -12px rgba(26, 26, 26, 0.1);
+  --bg-soft: #F5F3EE;
+  --bg-muted: #EDEBE3;
+  --bg-card: rgba(255, 255, 255, 0.78);
+  --bg-card-strong: rgba(255, 255, 255, 0.94);
+  --bg-sidebar: #F7F5EF;
+  --border-soft: rgba(27, 27, 25, 0.07);
+  --border-strong: rgba(27, 27, 25, 0.16);
+  --text-primary: #1B1B19;
+  --text-secondary: rgba(27, 27, 25, 0.72);
+  --text-muted: rgba(27, 27, 25, 0.48);
+  --text-soft: rgba(27, 27, 25, 0.62);
+  --accent-primary: #D97757;
+  --accent-primary-soft: #E08D6F;
+  --accent-primary-deep: #B05730;
+  --accent-violet: #8B73E6;
+  --accent-violet-soft: #A791F0;
+  --accent-emerald: #7BA05B;
+  --accent-rose: #D45B5B;
+  --accent-amber: #D4A03C;
+  --shadow-card: 0 1px 0 0 rgba(27, 27, 25, 0.03), 0 4px 16px -6px rgba(27, 27, 25, 0.08), 0 16px 40px -16px rgba(27, 27, 25, 0.08);
+  --shadow-float: 0 1px 0 0 rgba(27, 27, 25, 0.04), 0 10px 32px -8px rgba(27, 27, 25, 0.12), 0 32px 64px -16px rgba(27, 27, 25, 0.1);
+  --shadow-primary: 0 4px 16px -4px rgba(217, 119, 87, 0.4), 0 1px 0 0 rgba(255,255,255,0.2) inset;
 }
 
 [data-theme='dark'] {
-  --bg-base: #181613;
-  --bg-elev: #201D18;
-  --bg-soft: #14120F;
-  --bg-card: rgba(237, 232, 221, 0.045);
-  --bg-card-strong: rgba(237, 232, 221, 0.085);
-  --border-soft: rgba(237, 232, 221, 0.11);
-  --border-strong: rgba(237, 232, 221, 0.2);
-  --text-primary: #EDE8DD;
-  --text-secondary: rgba(237, 232, 221, 0.78);
-  --text-muted: rgba(237, 232, 221, 0.6);
-  --text-soft: rgba(237, 232, 221, 0.72);
-  --accent-gold: #B8A878;
-  --accent-cyan: #6FB3A8;
-  --accent-rose: #D08877;
-  --accent-violet: #8B95B8;
-  --shadow-card: 0 1px 0 0 rgba(237, 232, 221, 0.04) inset, 0 4px 16px -4px rgba(0, 0, 0, 0.4), 0 12px 40px -8px rgba(0, 0, 0, 0.5);
-  --shadow-float: 0 1px 0 0 rgba(237, 232, 221, 0.05) inset, 0 8px 32px -4px rgba(0, 0, 0, 0.5), 0 32px 64px -12px rgba(0, 0, 0, 0.6);
+  --bg-base: #1B1B19;
+  --bg-elev: #262623;
+  --bg-soft: #20201E;
+  --bg-muted: #2E2E2B;
+  --bg-card: rgba(44, 44, 42, 0.7);
+  --bg-card-strong: rgba(52, 51, 49, 0.88);
+  --bg-sidebar: #222220;
+  --border-soft: rgba(250, 249, 245, 0.08);
+  --border-strong: rgba(250, 249, 245, 0.18);
+  --text-primary: #FAF9F5;
+  --text-secondary: rgba(250, 249, 245, 0.76);
+  --text-muted: rgba(250, 249, 245, 0.52);
+  --text-soft: rgba(250, 249, 245, 0.68);
+  --accent-primary: #E08D6F;
+  --accent-primary-soft: #EAA28A;
+  --accent-primary-deep: #C46A4A;
+  --accent-violet: #A791F0;
+  --accent-violet-soft: #BDAEFF;
+  --accent-emerald: #8DB86A;
+  --accent-rose: #E47777;
+  --accent-amber: #E8B85C;
+  --shadow-card: 0 1px 0 0 rgba(250, 249, 245, 0.04) inset, 0 4px 16px -4px rgba(0, 0, 0, 0.4), 0 16px 40px -8px rgba(0, 0, 0, 0.5);
+  --shadow-float: 0 1px 0 0 rgba(250, 249, 245, 0.05) inset, 0 10px 32px -4px rgba(0, 0, 0, 0.5), 0 32px 64px -12px rgba(0, 0, 0, 0.6);
+  --shadow-primary: 0 4px 16px -4px rgba(224, 141, 111, 0.35), 0 1px 0 0 rgba(255,255,255,0.15) inset;
 }
 
 * {
@@ -59,26 +73,24 @@ html, body, #root {
   min-height: 100vh;
   background: var(--bg-base);
   color: var(--text-primary);
-  font-family: 'Inter Tight', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
-  font-feature-settings: 'cv11', 'ss01', 'ss03';
+  font-family: 'Poppins', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
   line-height: 1.6;
-  transition: background-color 0.4s ease, color 0.4s ease;
+  transition: background-color 0.35s ease, color 0.35s ease;
 }
 
 body {
   background:
-    radial-gradient(ellipse 70% 50% at 15% -5%, rgba(122, 106, 69, 0.06), transparent 55%),
-    radial-gradient(ellipse 60% 45% at 90% 105%, rgba(62, 74, 107, 0.05), transparent 55%),
-    radial-gradient(ellipse 50% 35% at 50% 50%, rgba(44, 95, 93, 0.03), transparent 65%),
+    radial-gradient(ellipse 65% 50% at 10% 0%, rgba(217, 119, 87, 0.06), transparent 60%),
+    radial-gradient(ellipse 55% 45% at 95% 110%, rgba(139, 115, 230, 0.05), transparent 60%),
     linear-gradient(180deg, var(--bg-base) 0%, var(--bg-soft) 100%);
   background-attachment: fixed;
 }
 
 [data-theme='dark'] body {
   background:
-    radial-gradient(ellipse 70% 50% at 15% -5%, rgba(184, 168, 120, 0.05), transparent 55%),
-    radial-gradient(ellipse 60% 45% at 90% 105%, rgba(139, 149, 184, 0.04), transparent 55%),
-    radial-gradient(ellipse 50% 35% at 50% 50%, rgba(111, 179, 168, 0.03), transparent 65%),
+    radial-gradient(ellipse 65% 50% at 10% 0%, rgba(224, 141, 111, 0.06), transparent 60%),
+    radial-gradient(ellipse 55% 45% at 95% 110%, rgba(167, 145, 240, 0.05), transparent 60%),
     linear-gradient(180deg, var(--bg-base) 0%, var(--bg-soft) 100%);
 }
 
@@ -87,14 +99,14 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.95 0 0 0 0 0.91 0 0 0 0 0.79 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  opacity: 0.12;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.96 0 0 0 0 0.95 0 0 0 0 0.92 0 0 0 0.035 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.1;
   z-index: 0;
   mix-blend-mode: overlay;
 }
 
 [data-theme='dark'] body::before {
-  opacity: 0.06;
+  opacity: 0.05;
 }
 
 #root {
@@ -103,7 +115,7 @@ body::before {
 }
 
 ::selection {
-  background: rgba(184, 133, 30, 0.22);
+  background: rgba(217, 119, 87, 0.22);
   color: var(--text-primary);
 }
 
@@ -126,13 +138,13 @@ body::before {
 }
 
 .font-display {
-  font-family: 'Fraunces', 'Noto Serif SC', Georgia, serif;
+  font-family: 'Newsreader', 'Noto Serif SC', Georgia, serif;
   font-feature-settings: 'ss01', 'ss02';
   font-optical-sizing: auto;
 }
 
 .font-mono {
-  font-family: 'JetBrains Mono', Menlo, monospace;
+  font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
 }
 
 .text-balance {
@@ -168,17 +180,17 @@ body::before {
   height: 1px;
 }
 
-.gold-underline {
+.primary-underline {
   position: relative;
 }
-.gold-underline::after {
+.primary-underline::after {
   content: '';
   position: absolute;
   left: 0;
   bottom: -2px;
   width: 100%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+  background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
   opacity: 0.6;
 }
 
@@ -216,7 +228,7 @@ input, textarea {
 }
 
 .shimmer-text {
-  background: linear-gradient(90deg, var(--text-primary) 0%, var(--accent-gold) 35%, var(--accent-cyan) 65%, var(--text-primary) 100%);
+  background: linear-gradient(90deg, var(--text-primary) 0%, var(--accent-primary) 35%, var(--accent-violet) 65%, var(--text-primary) 100%);
   background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -259,7 +271,6 @@ input, textarea {
   color: var(--text-primary);
 }
 
-/* 紧凑版排版：用于聊天气泡内的 LLM 文本，避免空行/段落边距撑高气泡 */
 .prose-compact {
   font-size: 12px;
   line-height: 1.65;
@@ -290,10 +301,6 @@ input, textarea {
   color: var(--text-primary);
 }
 
-/* ── 打印 / 导出 PDF ──────────────────────────────────────────
- * 仅 #report-print-root 及其后代可见，其余全部隐藏。
- * 打印根脱离模态框定位，铺满页面，白底黑字。
- */
 @media print {
   @page {
     margin: 16mm;
@@ -371,7 +378,6 @@ input, textarea {
   #report-print-root li {
     break-inside: avoid;
   }
-  /* 演进图三栏横向滚动在打印时改为纵向堆叠，保证 PDF 完整可见 */
   #report-print-root .evo-scroll {
     overflow: visible !important;
   }

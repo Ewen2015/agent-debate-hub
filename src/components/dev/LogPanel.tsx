@@ -4,10 +4,10 @@ import { getAllLogs, clearLogs, type LogEntry, type LogLevel } from '@/engine/lo
 import { Button } from '@/components/shared/Button';
 import { Chip } from '@/components/shared/Chip';
 
-const LEVEL_TONE: Record<LogLevel, 'gold' | 'cyan' | 'rose' | 'mute' | 'violet'> = {
+const LEVEL_TONE: Record<LogLevel, 'primary' | 'emerald' | 'rose' | 'mute' | 'violet'> = {
   debug: 'mute',
-  info: 'cyan',
-  warn: 'gold',
+  info: 'emerald',
+  warn: 'primary',
   error: 'rose',
 };
 
@@ -44,7 +44,7 @@ function LogItem({ entry }: { entry: LogEntry }) {
         <Chip tone={LEVEL_TONE[entry.level]} size="sm" className="shrink-0 !text-[9px] !px-1 !py-0">
           {LEVEL_LABEL[entry.level]}
         </Chip>
-        <span className="text-[var(--accent-gold)]/80 shrink-0 font-medium">{entry.module}</span>
+        <span className="text-[var(--accent-primary)]/80 shrink-0 font-medium">{entry.module}</span>
         <span className="text-[var(--text-primary)]/90 flex-1 min-w-0 break-words">{entry.message}</span>
         {hasContext && (
           <button
@@ -91,11 +91,11 @@ export function LogPanel() {
     <div className="flex flex-col h-full">
       {/* 工具栏 */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--border-soft)] shrink-0">
-        <Terminal size={14} className="text-[var(--accent-cyan)]" />
+        <Terminal size={14} className="text-[var(--accent-emerald)]" />
         <span className="font-display text-[13px] text-[var(--text-primary)]">运行日志</span>
         <Chip tone="mute" size="sm">{logs.length} 条</Chip>
         {errorCount > 0 && <Chip tone="rose" size="sm">{errorCount} 错误</Chip>}
-        {warnCount > 0 && <Chip tone="gold" size="sm">{warnCount} 警告</Chip>}
+        {warnCount > 0 && <Chip tone="primary" size="sm">{warnCount} 警告</Chip>}
         <div className="flex-1" />
         {/* 级别过滤 */}
         <div className="flex items-center gap-1">
@@ -105,7 +105,7 @@ export function LogPanel() {
               onClick={() => setFilter(f)}
               className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
                 filter === f
-                  ? 'bg-[var(--accent-cyan)]/20 text-[var(--accent-cyan)]'
+                  ? 'bg-[var(--accent-emerald)]/20 text-[var(--accent-emerald)]'
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
               }`}
             >

@@ -19,17 +19,17 @@ const fmt = (ts: number) => {
 const typeMeta = (type: DebateEvent['type']) => {
   switch (type) {
     case 'think':
-      return { icon: <Brain size={12} />, label: '思考', tone: 'gold' as const };
+      return { icon: <Brain size={12} />, label: '思考', tone: 'primary' as const };
     case 'speak':
       return { icon: <MessageSquare size={12} />, label: '发言', tone: 'violet' as const };
     case 'search':
-      return { icon: <Search size={12} />, label: '检索', tone: 'cyan' as const };
+      return { icon: <Search size={12} />, label: '检索', tone: 'emerald' as const };
     case 'cite':
-      return { icon: <BookOpenCheck size={12} />, label: '引用', tone: 'cyan' as const };
+      return { icon: <BookOpenCheck size={12} />, label: '引用', tone: 'emerald' as const };
     case 'interrupt':
       return { icon: <AlertTriangle size={12} />, label: '人类介入', tone: 'rose' as const };
     case 'round-summary':
-      return { icon: <GitCompareArrows size={12} />, label: '观点总结', tone: 'gold' as const };
+      return { icon: <GitCompareArrows size={12} />, label: '观点总结', tone: 'primary' as const };
     case 'system':
       return { icon: <Sparkles size={12} />, label: '系统', tone: 'mute' as const };
   }
@@ -81,9 +81,9 @@ function EventRow({ e }: { e: DebateEvent }) {
           <div
             className={`mt-0.5 ${
               isThink
-                ? 'font-mono text-[11.5px] text-[var(--accent-gold)]/80 border-l-2 border-[var(--accent-gold)]/30 pl-2'
+                ? 'font-mono text-[11.5px] text-[var(--accent-primary)]/80 border-l-2 border-[var(--accent-primary)]/30 pl-2'
                 : isSearch
-                ? 'text-[var(--accent-cyan)]/85'
+                ? 'text-[var(--accent-emerald)]/85'
                 : 'text-[var(--text-primary)]/75'
             } ${!expanded && isLong ? 'line-clamp-2' : 'whitespace-pre-wrap'}`}
           >
@@ -93,8 +93,8 @@ function EventRow({ e }: { e: DebateEvent }) {
         {e.payload.sources && e.payload.sources.length > 0 && (
           <ul className="mt-1 space-y-0.5">
             {e.payload.sources.map((s) => (
-              <li key={s.url} className="text-[11px] text-[var(--text-primary)]/50 pl-2 border-l border-[var(--accent-cyan)]/25">
-                <a className="text-[var(--accent-cyan)]/85 hover:text-[var(--accent-cyan)]" href={s.url} target="_blank" rel="noreferrer">
+              <li key={s.url} className="text-[11px] text-[var(--text-primary)]/50 pl-2 border-l border-[var(--accent-emerald)]/25">
+                <a className="text-[var(--accent-emerald)]/85 hover:text-[var(--accent-emerald)]" href={s.url} target="_blank" rel="noreferrer">
                   {s.title}
                 </a>
                 <span className="text-[var(--text-primary)]/30 ml-1.5 text-[10px] tracking-widish uppercase">{s.domain}</span>

@@ -42,7 +42,7 @@ export function RosterPanel() {
                 onClick={() => setGroupSize(n)}
                 className={`flex-1 h-9 rounded-md text-xs font-mono transition-all
                   ${active
-                    ? 'bg-gradient-to-b from-[var(--accent-gold)] to-[#5A4B2D] text-white shadow-[0_1px_0_0_rgba(255,255,255,0.18)_inset,0_10px_24px_-18px_rgba(26,26,26,0.24)]'
+                    ? 'bg-gradient-to-b from-[var(--accent-primary)] to-[#5A4B2D] text-white shadow-[0_1px_0_0_rgba(255,255,255,0.18)_inset,0_10px_24px_-18px_rgba(26,26,26,0.24)]'
                     : 'bg-[var(--bg-card)] text-[var(--text-primary)]/40 border border-[var(--border-soft)] hover:bg-[var(--bg-card-strong)]'}`}
               >
                 {n}
@@ -61,7 +61,7 @@ export function RosterPanel() {
           </span>
           <button
             onClick={() => setShowPersonaLib(!showPersonaLib)}
-            className="text-[10px] tracking-widish uppercase text-[var(--accent-gold)] hover:text-[var(--accent-gold)] transition-colors"
+            className="text-[10px] tracking-widish uppercase text-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-colors"
           >
             {showPersonaLib ? '收起' : '+ 人设库'}
           </button>
@@ -93,7 +93,7 @@ export function RosterPanel() {
                         {persona.name}
                       </span>
                     )}
-                    <Chip tone={persona.stance === 'pro' ? 'gold' : persona.stance === 'con' ? 'rose' : 'cyan'}>
+                    <Chip tone={persona.stance === 'pro' ? 'primary' : persona.stance === 'con' ? 'rose' : 'emerald'}>
                       {persona.stance === 'pro' ? '支持' : persona.stance === 'con' ? '反对' : '中立'}
                     </Chip>
                   </div>
@@ -160,7 +160,7 @@ export function RosterPanel() {
                   }}
                   className={`relative text-left rounded-lg p-2.5 border transition-colors
                     ${used
-                      ? 'border-[var(--accent-gold)]/40 bg-[var(--accent-gold)]/8'
+                      ? 'border-[var(--accent-primary)]/40 bg-[var(--accent-primary)]/8'
                       : 'border-[var(--border-soft)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-strong)]'}`}
                 >
                   <div className="flex items-center gap-2">
@@ -180,7 +180,7 @@ export function RosterPanel() {
                     </div>
                   </div>
                   {used && (
-                    <div className="absolute top-1.5 right-1.5 text-[var(--accent-gold)]">
+                    <div className="absolute top-1.5 right-1.5 text-[var(--accent-primary)]">
                       <Check size={10} />
                     </div>
                   )}
@@ -230,26 +230,26 @@ function CustomizeForm({
         value={oneLiner}
         onChange={(e) => setOneLiner(e.target.value)}
         rows={1}
-        className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold)]/30"
+        className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)]/30"
         placeholder="一句话立场"
       />
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         rows={2}
-        className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1 text-xs text-[var(--text-primary)]/85 outline-none focus:border-[var(--accent-gold)]/30"
+        className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1 text-xs text-[var(--text-primary)]/85 outline-none focus:border-[var(--accent-primary)]/30"
         placeholder="人设详细描述"
       />
       <input
         value={tone}
         onChange={(e) => setTone(e.target.value)}
-        className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold)]/30"
+        className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)]/30"
         placeholder="语气（用 · 分隔多个标签）"
       />
       <input
         value={focus}
         onChange={(e) => setFocus(e.target.value)}
-        className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold)]/30"
+        className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)]/30"
         placeholder="关注点（用 、 分隔）"
       />
       <div className="flex items-center gap-2">
@@ -260,7 +260,7 @@ function CustomizeForm({
             onClick={() => setStance(s)}
             className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-widish transition-colors
               ${stance === s
-                ? s === 'pro' ? 'bg-[var(--accent-gold)] text-[var(--text-primary)]' : s === 'con' ? 'bg-[var(--accent-rose)] text-[var(--text-primary)]' : 'bg-[var(--accent-cyan)] text-[var(--text-primary)]'
+                ? s === 'pro' ? 'bg-[var(--accent-primary)] text-[var(--text-primary)]' : s === 'con' ? 'bg-[var(--accent-rose)] text-[var(--text-primary)]' : 'bg-[var(--accent-emerald)] text-[var(--text-primary)]'
                 : 'bg-[var(--bg-card)] text-[var(--text-primary)]/55 hover:bg-[var(--bg-card-strong)]'}`}
           >
             {s === 'pro' ? '支持' : s === 'con' ? '反对' : '中立'}

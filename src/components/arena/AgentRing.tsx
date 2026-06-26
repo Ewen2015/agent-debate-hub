@@ -4,18 +4,18 @@ import { Chip } from '@/components/shared/Chip';
 import { resolvePersona } from '@/engine/MockLLM';
 import { motion } from 'framer-motion';
 
-const STATUS_LABEL: Record<string, { text: string; tone: 'gold' | 'cyan' | 'rose' | 'violet' | 'neutral' }> = {
+const STATUS_LABEL: Record<string, { text: string; tone: 'primary' | 'emerald' | 'rose' | 'violet' | 'neutral' }> = {
   idle: { text: '待命', tone: 'neutral' },
-  thinking: { text: '思考中', tone: 'gold' },
-  searching: { text: '检索中', tone: 'cyan' },
+  thinking: { text: '思考中', tone: 'primary' },
+  searching: { text: '检索中', tone: 'emerald' },
   speaking: { text: '发言中', tone: 'violet' },
   paused: { text: '已暂停', tone: 'rose' },
 };
 
-const STANCE_LABEL: Record<string, { text: string; tone: 'gold' | 'cyan' | 'rose' | 'violet' | 'neutral' }> = {
-  pro: { text: '支持', tone: 'gold' },
+const STANCE_LABEL: Record<string, { text: string; tone: 'primary' | 'emerald' | 'rose' | 'violet' | 'neutral' }> = {
+  pro: { text: '支持', tone: 'primary' },
   con: { text: '反对', tone: 'rose' },
-  neutral: { text: '中立', tone: 'cyan' },
+  neutral: { text: '中立', tone: 'emerald' },
 };
 
 export function AgentRing() {

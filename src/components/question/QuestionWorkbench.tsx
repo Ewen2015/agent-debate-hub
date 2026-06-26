@@ -21,7 +21,7 @@ export function QuestionWorkbench() {
           onClick={() => setShowBg(!showBg)}
           title="附加背景"
           className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${
-            showBg ? 'bg-[var(--accent-gold)]/15 text-[var(--accent-gold)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]'
+            showBg ? 'bg-[var(--accent-primary)]/15 text-[var(--accent-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]'
           }`}
         >
           {showBg ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -33,7 +33,7 @@ export function QuestionWorkbench() {
         onChange={(e) => setQuestion(e.target.value, background)}
         placeholder="输入讨论议题…"
         rows={1}
-        className="flex-1 min-w-0 bg-transparent border-b border-[var(--accent-gold)]/25 focus:border-[var(--accent-gold)] outline-none font-display text-[14px] tracking-tightish text-[var(--text-primary)] placeholder:text-[var(--text-muted)] resize-none transition-colors py-0.5 leading-relaxed"
+        className="flex-1 min-w-0 bg-transparent border-b border-[var(--accent-primary)]/25 focus:border-[var(--accent-primary)] outline-none font-display text-[14px] tracking-tightish text-[var(--text-primary)] placeholder:text-[var(--text-muted)] resize-none transition-colors py-0.5 leading-relaxed"
       />
 
       <div className="flex items-center gap-1.5 flex-shrink-0" title="辩论轮数">
@@ -45,7 +45,7 @@ export function QuestionWorkbench() {
             title={`${n} 轮辩论`}
             className={`w-6 h-6 rounded-md text-[11px] font-medium transition-all
               ${maxRounds === n
-                ? 'bg-[var(--accent-gold)] text-white shadow-[0_1px_3px_-1px_rgba(26,26,26,0.28)]'
+                ? 'bg-[var(--accent-primary)] text-white shadow-[0_1px_3px_-1px_rgba(26,26,26,0.28)]'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]'}
               ${isLive ? 'opacity-40 cursor-not-allowed' : ''}`}
           >
@@ -68,7 +68,7 @@ export function QuestionWorkbench() {
             if (!maxRounds || maxRounds < 1) setMaxRounds(1);
           }}
           title="手动输入轮数（1-100）"
-          className={`w-11 h-6 rounded-md text-[11px] font-medium text-center bg-[var(--bg-card)] border border-[var(--border-soft)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold)]/50 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
+          className={`w-11 h-6 rounded-md text-[11px] font-medium text-center bg-[var(--bg-card)] border border-[var(--border-soft)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)]/50 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
             isLive ? 'opacity-40 cursor-not-allowed' : ''
           }`}
         />
@@ -84,7 +84,7 @@ export function QuestionWorkbench() {
           onChange={(e) => setQuestion(question, e.target.value)}
           placeholder="附加背景（可选）"
           rows={2}
-          className="absolute left-3 right-3 top-full mt-1 w-[calc(100%-1.5rem)] bg-[var(--bg-elev)] border border-[var(--border-soft)] rounded-xl outline-none text-[12px] text-[var(--text-secondary)] placeholder:text-[var(--text-muted)] px-3 py-2 resize-none focus:border-[var(--accent-gold)]/40 transition-colors shadow-float z-20"
+          className="absolute left-3 right-3 top-full mt-1 w-[calc(100%-1.5rem)] bg-[var(--bg-elev)] border border-[var(--border-soft)] rounded-xl outline-none text-[12px] text-[var(--text-secondary)] placeholder:text-[var(--text-muted)] px-3 py-2 resize-none focus:border-[var(--accent-primary)]/40 transition-colors shadow-float z-20"
         />
       )}
     </div>

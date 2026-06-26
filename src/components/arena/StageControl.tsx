@@ -117,7 +117,7 @@ export function StageControl() {
   return (
     <div className="glass rounded-2xl px-3 py-2.5 flex flex-wrap items-center gap-2 text-[13px]">
       <div className="flex items-start gap-2 mr-2 min-w-[160px]">
-        <div className="w-1 h-6 bg-[var(--accent-gold)] rounded-full mt-1" />
+        <div className="w-1 h-6 bg-[var(--accent-primary)] rounded-full mt-1" />
         <div>
           <div className="font-display text-[13px] tracking-tightish text-[var(--text-primary)] leading-none">指挥台</div>
           <div className="text-[10px] uppercase tracking-widest2 text-[var(--text-muted)] mt-1">
@@ -176,7 +176,7 @@ export function StageControl() {
               Debate
             </Button>
           )}
-          <Chip tone="gold" size="sm">
+          <Chip tone="primary" size="sm">
             {session.speeches.filter((s) => s.round === 0).length} 条观点
           </Chip>
         </>
@@ -215,7 +215,7 @@ export function StageControl() {
                 if (!addRounds || addRounds < 1) setAddRounds(1);
               }}
               title="手动输入追加轮数（1-100）"
-              className="w-11 h-6 rounded-md text-[11px] font-medium text-center bg-[var(--bg-card)] border border-[var(--border-soft)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold)]/50 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              className="w-11 h-6 rounded-md text-[11px] font-medium text-center bg-[var(--bg-card)] border border-[var(--border-soft)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)]/50 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
             <span className="text-[10px] text-[var(--text-muted)]">轮</span>
           </div>
@@ -307,7 +307,7 @@ export function StageControl() {
         <button
           onClick={toggleTheme}
           title={theme === 'light' ? '切换到深色' : '切换到浅色'}
-          className="w-8 h-8 rounded-lg border border-[var(--border-soft)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-gold)]/40 text-[var(--text-soft)] hover:text-[var(--text-primary)] flex items-center justify-center transition-all"
+          className="w-8 h-8 rounded-lg border border-[var(--border-soft)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-primary)]/40 text-[var(--text-soft)] hover:text-[var(--text-primary)] flex items-center justify-center transition-all"
         >
           {theme === 'light' ? <Moon size={14} /> : <Sun size={14} />}
         </button>
@@ -315,21 +315,21 @@ export function StageControl() {
           <button
             type="button"
             onClick={() => setRoster(true)}
-            className="rounded-lg border border-[var(--border-soft)] bg-[var(--bg-card)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-gold)]/40 transition-all"
+            className="rounded-lg border border-[var(--border-soft)] bg-[var(--bg-card)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-primary)]/40 transition-all"
           >
             Roster
           </button>
           <button
             type="button"
             onClick={() => setGateway(true)}
-            className="rounded-lg border border-[var(--border-soft)] bg-[var(--bg-card)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-gold)]/40 transition-all"
+            className="rounded-lg border border-[var(--border-soft)] bg-[var(--bg-card)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-primary)]/40 transition-all"
           >
             Gateway
           </button>
           <button
             type="button"
             onClick={() => setLogDrawer(true)}
-            className="rounded-lg border border-[var(--border-soft)] bg-[var(--bg-card)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-cyan)]/40 transition-all"
+            className="rounded-lg border border-[var(--border-soft)] bg-[var(--bg-card)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-emerald)]/40 transition-all"
           >
             Logs
           </button>
@@ -337,7 +337,7 @@ export function StageControl() {
       </div>
 
       {report && session.phase === 'report' && (
-        <Chip tone="gold">报告已就绪</Chip>
+        <Chip tone="primary">报告已就绪</Chip>
       )}
     </div>
   );

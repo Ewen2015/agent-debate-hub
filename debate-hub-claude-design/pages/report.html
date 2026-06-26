@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>统一结论报告 — Group Debate Agent Hub</title>
+    <style id="theme-vars">
+:root {
+  /* ── Brand ── */
+  --claude-brand: #D97757;
+  --claude-brand-soft: #E08D6F;
+  --claude-brand-light: #F0C6B3;
+  --claude-brand-pale: #F8E3D8;
+  --claude-brand-deep: #8A5740;
+  --claude-brand-dark: #4D3528;
+
+  /* ── Backgrounds ── */
+  --bg-base: #FAF9F5;
+  --bg-elev: #FFFFFF;
+  --bg-soft: #F1F1EF;
+  --bg-muted: #E9E6DC;
+  --bg-card: rgba(255, 255, 255, 0.82);
+  --bg-card-strong: rgba(255, 255, 255, 0.95);
+  --bg-sidebar: #F5F4EE;
+
+  /* ── Text ── */
+  --text-primary: #1B1B19;
+  --text-secondary: #46443B;
+  --text-muted: #908E84;
+  --text-soft: #6E6D68;
+  --text-inverse: #FAF9F5;
+
+  /* ── Borders ── */
+  --border-soft: rgba(27, 27, 25, 0.08);
+  --border-medium: rgba(27, 27, 25, 0.14);
+  --border-strong: rgba(27, 27, 25, 0.22);
+
+  /* ── Accent Colors ── */
+  --accent-primary: #D97757;
+  --accent-primary-soft: #E08D6F;
+  --accent-secondary: #9C87F5;
+  --accent-success: #8CA06F;
+  --accent-danger: #EF4444;
+  --accent-info: #B05730;
+
+  /* ── Shadows ── */
+  --shadow-xs: 0 1px 3px 0 rgba(0,0,0,0.04);
+  --shadow-sm: 0 2px 6px -2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px -4px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px -6px rgba(0,0,0,0.1);
+  --shadow-xl: 0 16px 48px -12px rgba(0,0,0,0.12);
+
+  /* ── Radius ── */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* ── Typography ── */
+  --font-display: 'Newsreader', Georgia, ui-serif, serif;
+  --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Lora', Georgia, ui-serif, serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+}
+
+.dark {
+  /* ── Brand ── */
+  --claude-brand: #D97757;
+  --claude-brand-soft: #B0683F;
+  --claude-brand-light: #8A5740;
+  --claude-brand-pale: #3A2A22;
+  --claude-brand-deep: #6B4533;
+  --claude-brand-dark: #4D3528;
+
+  /* ── Backgrounds ── */
+  --bg-base: #1B1B19;
+  --bg-elev: #262624;
+  --bg-soft: #2C2C2B;
+  --bg-muted: #3E3E38;
+  --bg-card: rgba(44, 44, 43, 0.85);
+  --bg-card-strong: rgba(56, 55, 52, 0.95);
+  --bg-sidebar: #1F1E1D;
+
+  /* ── Text ── */
+  --text-primary: #FAF9F5;
+  --text-secondary: #D8D6CD;
+  --text-muted: #908E84;
+  --text-soft: #B7B5A9;
+  --text-inverse: #1B1B19;
+
+  /* ── Borders ── */
+  --border-soft: rgba(250, 249, 245, 0.08);
+  --border-medium: rgba(250, 249, 245, 0.14);
+  --border-strong: rgba(250, 249, 245, 0.22);
+
+  /* ── Accent Colors ── */
+  --accent-primary: #D97757;
+  --accent-primary-soft: #B0683F;
+  --accent-secondary: #9C87F5;
+  --accent-success: #8CA06F;
+  --accent-danger: #EF4444;
+  --accent-info: #B05730;
+
+  /* ── Shadows ── */
+  --shadow-xs: 0 1px 3px 0 rgba(0,0,0,0.2);
+  --shadow-sm: 0 2px 6px -2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px -4px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 24px -6px rgba(0,0,0,0.5);
+  --shadow-xl: 0 16px 48px -12px rgba(0,0,0,0.6);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-primary: var(--text-primary);
+    --color-secondary: var(--text-secondary);
+    --color-muted: var(--text-muted);
+  }
+  @layer base {
+    body { background: var(--text-background); color: var(--text-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body>
+
+  <!-- Warm background overlay -->
+  <div style="min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 60px 24px 80px; background: var(--bg-base);">
+
+    <!-- ─── REPORT PANEL ─── -->
+    <div class="report-panel">
+
+      <!-- ═══════ HEADER ═══════ -->
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <!-- Document icon -->
+          <svg class="icon" style="color: var(--claude-brand);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+          </svg>
+          <h1 style="font-family: var(--font-display); font-size: 24px; font-weight: 600; color: var(--text-primary); line-height: 1.25;">统一结论报告</h1>
+        </div>
+        <button class="close-btn" aria-label="关闭">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px; padding-left: 28px;">2026-06-26  14:32  ·  主题：AI 监管政策的利弊与平衡</p>
+
+      <div class="divider-gradient"></div>
+
+      <!-- ═══════ SECTION 01 — TL;DR ═══════ -->
+      <div style="margin-bottom: 32px;">
+        <div class="section-heading">
+          <span class="idx">01</span>
+          <h2>TL;DR</h2>
+          <span class="rule"></span>
+        </div>
+        <div class="body-text">
+          <p>经过四轮深度辩论，各方 Agent 在 AI 监管政策的核心方向上达成较高共识：应在促进创新与风险防控之间寻求动态平衡。多数参与者支持建立分级监管框架，同时强调监管不应阻碍基础研究和开源生态发展。</p>
+          <p>讨论中最大分歧集中在监管主体的权力范围与跨境协调机制上，但整体趋势显示观点收敛度从首轮的 30% 提升至第四轮的 85%。</p>
+        </div>
+        <!-- Meta chips -->
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;">
+          <span class="chip chip-brand">Claude-3.5-Sonnet</span>
+          <span class="chip chip-secondary">5 Agents</span>
+          <span class="chip chip-muted">4 Rounds</span>
+          <span class="chip chip-muted">~18 min</span>
+          <span class="chip chip-success">收敛 ↑</span>
+        </div>
+      </div>
+
+      <div class="divider-gradient"></div>
+
+      <!-- ═══════ SECTION 02 — 总结与评述 ═══════ -->
+      <div style="margin-bottom: 32px;">
+        <div class="section-heading">
+          <span class="idx">02</span>
+          <h2>总结与评述</h2>
+          <span class="rule"></span>
+        </div>
+        <div class="body-text">
+          <p>本次辩论围绕"AI 监管政策的利弊与平衡"展开，参与者从政策制定者、技术研究者、产业代表和公众权益倡导者四个维度进行了充分论证。辩论过程中各方论据扎实、引用案例丰富，展现了多 Agent 协同辩论在复杂政策议题上的分析能力。</p>
+          <p>从质量维度看，本轮辩论的核心观点覆盖面广，论据链较为完整。不足之处在于部分 Agent 在后续轮次中出现了观点重复论证的现象，建议未来版本引入更精细的去重机制和话题引导策略。</p>
+        </div>
+        <ul class="bullet-list">
+          <li>论证质量评分：8.2 / 10（较前次提升 0.6）</li>
+          <li>观点新颖度中等，多数论点属于主流框架内的细分差异</li>
+          <li>收敛速度优于历史平均，第三轮已出现明显共识倾向</li>
+        </ul>
+      </div>
+
+      <div class="divider-gradient"></div>
+
+      <!-- ═══════ SECTION 03 — 共识点 ═══════ -->
+      <div style="margin-bottom: 32px;">
+        <div class="section-heading">
+          <span class="idx">03</span>
+          <h2>共识点</h2>
+          <span class="count-badge">4 项</span>
+          <span class="rule"></span>
+        </div>
+        <div class="accent-item">
+          <strong>分级监管框架：</strong>所有参与者均支持根据 AI 系统的风险等级实施差异化监管，而非一刀切式的统一标准。高风险应用（如医疗诊断、自动驾驶）应接受更严格的准入审查。
+        </div>
+        <div class="accent-item">
+          <strong>透明度要求：</strong>普遍认同 AI 系统应具备可解释性，尤其是面向公众的关键决策场景。但"可解释性"的具体技术标准仍需进一步明确。
+        </div>
+        <div class="accent-item">
+          <strong>开源生态保护：</strong>各方一致认为监管不应阻碍开源社区的发展，基础模型的开放共享对于技术民主化和安全审计具有不可替代的价值。
+        </div>
+        <div class="accent-item">
+          <strong>持续迭代机制：</strong>监管政策应设计为"活文档"，建立定期审查和修订的制度化流程，以跟上技术发展的速度。
+        </div>
+      </div>
+
+      <div class="divider-gradient"></div>
+
+      <!-- ═══════ SECTION 04 — 关键分歧 ═══════ -->
+      <div style="margin-bottom: 32px;">
+        <div class="section-heading">
+          <span class="idx">04</span>
+          <h2>关键分歧</h2>
+          <span class="count-badge">3 项</span>
+          <span class="rule"></span>
+        </div>
+        <div class="accent-item danger">
+          <strong>监管主体权限：</strong>产业代表倾向于行业自律为主、政府监督为辅；而公众权益倡导者则坚持应建立强有力的独立监管机构，拥有实质性的执法权。
+        </div>
+        <div class="accent-item danger">
+          <strong>跨境协调机制：</strong>技术研究者主张通过国际技术标准实现间接协调，而政策制定者更倾向于建立具有约束力的多边条约框架，两者在实施路径上存在显著分歧。
+        </div>
+        <div class="accent-item danger">
+          <strong>创新与安全的优先级：</strong>部分参与者认为当前阶段应优先保障创新活力，安全风险可通过市场机制逐步消化；另一部分则认为安全底线应在创新之前，前置性约束是必要的。
+        </div>
+      </div>
+
+      <div class="divider-gradient"></div>
+
+      <!-- ═══════ SECTION 05 — 行动建议 ═══════ -->
+      <div style="margin-bottom: 32px;">
+        <div class="section-heading">
+          <span class="idx">05</span>
+          <h2>行动建议</h2>
+          <span class="rule"></span>
+        </div>
+        <div class="action-item">
+          <span class="num">1</span>
+          <span class="text"><strong>建立风险分级标准</strong> — 参照欧盟 AI Act 的分类方法，结合本国产业特点，制定适用于不同风险等级的具体监管要求和合规路径。</span>
+        </div>
+        <div class="action-item">
+          <span class="num">2</span>
+          <span class="text"><strong>设立 AI 沙盒机制</strong> — 为创新企业提供受控的测试环境，在降低合规成本的同时确保风险可控，特别针对医疗、金融等敏感领域。</span>
+        </div>
+        <div class="action-item">
+          <span class="num">3</span>
+          <span class="text"><strong>推动开源审计认证</strong> — 建立面向开源模型的第三方审计体系，通过"安全徽章"机制为社区提供可信度参考，避免过度监管压制开源活力。</span>
+        </div>
+        <div class="action-item">
+          <span class="num">4</span>
+          <span class="text"><strong>启动多边对话平台</strong> — 在联合国或 OECD 框架下建立 AI 治理的多边磋商机制，优先在数据跨境、算法透明度等低敏感领域寻求国际共识。</span>
+        </div>
+      </div>
+
+      <div class="divider-gradient"></div>
+
+      <!-- ═══════ SECTION 06 — 收敛曲线 ═══════ -->
+      <div style="margin-bottom: 36px;">
+        <div class="section-heading">
+          <span class="idx">06</span>
+          <h2>收敛曲线</h2>
+          <span class="rule"></span>
+        </div>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">观点收敛度 — 各轮辩论后 Agent 间共识比例</p>
+
+        <!-- Pure CSS bar chart -->
+        <div class="chart-bar-group">
+          <!-- Round 1 — 30% -->
+          <div class="chart-col">
+            <span class="chart-pct">30%</span>
+            <div class="chart-bar-wrap">
+              <div class="chart-bar" style="height: 30%; background: linear-gradient(to top, var(--claude-brand-light), var(--claude-brand-pale));"></div>
+            </div>
+            <span class="chart-round">R1</span>
+          </div>
+          <!-- Round 2 — 52% -->
+          <div class="chart-col">
+            <span class="chart-pct">52%</span>
+            <div class="chart-bar-wrap">
+              <div class="chart-bar" style="height: 52%; background: linear-gradient(to top, var(--claude-brand-light), var(--claude-brand-pale));"></div>
+            </div>
+            <span class="chart-round">R2</span>
+          </div>
+          <!-- Round 3 — 71% -->
+          <div class="chart-col">
+            <span class="chart-pct">71%</span>
+            <div class="chart-bar-wrap">
+              <div class="chart-bar" style="height: 71%; background: linear-gradient(to top, var(--claude-brand-soft), var(--claude-brand-light));"></div>
+            </div>
+            <span class="chart-round">R3</span>
+          </div>
+          <!-- Round 4 — 85% -->
+          <div class="chart-col">
+            <span class="chart-pct">85%</span>
+            <div class="chart-bar-wrap">
+              <div class="chart-bar" style="height: 85%; background: linear-gradient(to top, var(--claude-brand), var(--claude-brand-soft));"></div>
+            </div>
+            <span class="chart-round">R4</span>
+          </div>
+        </div>
+
+        <!-- Trend arrow -->
+        <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 16px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-success)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          <span style="font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--accent-success);">收敛趋势良好 — 从 30% 提升至 85%</span>
+        </div>
+      </div>
+
+      <div class="divider-gradient"></div>
+
+      <!-- ═══════ EXPORT ACTIONS ═══════ -->
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; padding-top: 4px;">
+        <!-- Export PDF — primary -->
+        <a href="#" class="btn btn-primary">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+          导出 PDF
+        </a>
+        <!-- Export Markdown -->
+        <a href="#" class="btn btn-outline">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="4 10 4 14"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          导出 Markdown
+        </a>
+        <!-- Export HTML -->
+        <a href="#" class="btn btn-outline">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          导出 HTML
+        </a>
+        <!-- Copy -->
+        <a href="#" class="btn btn-outline">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          复制
+        </a>
+      </div>
+
+    </div><!-- /.report-panel -->
+  </div>
+
+</body>
+</html>

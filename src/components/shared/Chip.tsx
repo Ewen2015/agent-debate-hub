@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
 
-type Tone = 'gold' | 'cyan' | 'rose' | 'violet' | 'neutral' | 'mute';
+type Tone = 'primary' | 'violet' | 'emerald' | 'rose' | 'amber' | 'neutral' | 'mute';
 
 const toneClass: Record<Tone, string> = {
-  gold: 'bg-[var(--accent-gold)]/10 text-[var(--accent-gold)] border-[var(--accent-gold)]/20',
-  cyan: 'bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] border-[var(--accent-cyan)]/20',
-  rose: 'bg-[var(--accent-rose)]/10 text-[var(--accent-rose)] border-[var(--accent-rose)]/20',
+  primary: 'bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] border-[var(--accent-primary)]/20',
   violet: 'bg-[var(--accent-violet)]/10 text-[var(--accent-violet)] border-[var(--accent-violet)]/20',
+  emerald: 'bg-[var(--accent-emerald)]/12 text-[var(--accent-emerald)] border-[var(--accent-emerald)]/22',
+  rose: 'bg-[var(--accent-rose)]/10 text-[var(--accent-rose)] border-[var(--accent-rose)]/20',
+  amber: 'bg-[var(--accent-amber)]/12 text-[var(--accent-amber)] border-[var(--accent-amber)]/22',
   neutral: 'bg-[var(--bg-card-strong)] text-[var(--text-soft)] border-[var(--border-soft)]',
   mute: 'bg-[var(--bg-card-strong)] text-[var(--text-muted)] border-[var(--border-soft)]',
 };

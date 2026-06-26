@@ -107,7 +107,7 @@ export function ArgumentEvolutionGraph({
         <Legend color={STANCE_FILL.neutral} label="中立" />
         <span className="ml-1 hidden sm:inline">从左到右：观点按轮次演进</span>
         {columns.length > 1 && (
-          <span className="ml-auto text-[var(--accent-cyan)]/70">← 横向滑动查看全部 {columns.length} 轮 →</span>
+          <span className="ml-auto text-[var(--accent-emerald)]/70">← 横向滑动查看全部 {columns.length} 轮 →</span>
         )}
       </div>
 
@@ -134,7 +134,7 @@ function RoundColumn({ column }: { column: Column }) {
 
       {/* 本轮总结 */}
       <div className="rounded-md bg-[var(--bg-card-soft)] border border-[var(--border-soft)] px-2.5 py-2">
-        <div className="text-[9px] tracking-widish uppercase text-[var(--accent-gold)]/70 mb-1">
+        <div className="text-[9px] tracking-widish uppercase text-[var(--accent-primary)]/70 mb-1">
           本轮总结
         </div>
         <div className="text-[12px] leading-[19px] text-[var(--text-primary)]/85 break-words">
@@ -185,13 +185,13 @@ function ViewpointCard({ v }: { v: RoundViewpoint }) {
             <button
               type="button"
               onClick={() => setExpanded((e) => !e)}
-              className="text-[var(--accent-cyan)]/80 hover:text-[var(--accent-cyan)] transition-colors"
+              className="text-[var(--accent-emerald)]/80 hover:text-[var(--accent-emerald)] transition-colors"
             >
               {expanded ? '收起' : '展开全文'}
             </button>
           )}
           {v.evidenceCount > 0 && (
-            <span className="text-[var(--accent-cyan)]/80">引用 {v.evidenceCount} 条证据</span>
+            <span className="text-[var(--accent-emerald)]/80">引用 {v.evidenceCount} 条证据</span>
           )}
         </div>
       )}

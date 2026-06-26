@@ -228,7 +228,7 @@ function WorkspaceSidebar({
               type="button"
               onClick={createChannel}
               title="新建频道"
-              className="w-7 h-7 rounded-lg border border-[var(--border-soft)] bg-[var(--bg-card)] text-[var(--text-soft)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-gold)]/40 flex items-center justify-center transition-all"
+              className="w-7 h-7 rounded-lg border border-[var(--border-soft)] bg-[var(--bg-card)] text-[var(--text-soft)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-primary)]/40 flex items-center justify-center transition-all"
             >
               <Plus size={15} />
             </button>
@@ -260,14 +260,14 @@ function WorkspaceSidebar({
                   onContextMenu={(e) => handleChannelContextMenu(e, item.id, name)}
                   className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${
                     isActive
-                      ? 'bg-[var(--accent-gold)]/12 text-[var(--text-primary)]'
+                      ? 'bg-[var(--accent-primary)]/12 text-[var(--text-primary)]'
                       : 'text-[var(--text-secondary)] hover:bg-[var(--bg-card-strong)]'
                   }`}
                 >
-                  <Hash size={14} className={`flex-shrink-0 ${isActive ? 'text-[var(--accent-gold)]' : 'text-[var(--text-muted)]'}`} />
+                  <Hash size={14} className={`flex-shrink-0 ${isActive ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)]'}`} />
                   <span className={`truncate text-[13px] ${isActive ? 'font-medium' : ''}`}>{name}</span>
                   {isActive && (
-                    <span className="ml-auto flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--accent-gold)]" />
+                    <span className="ml-auto flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)]" />
                   )}
                 </div>
               );
@@ -432,7 +432,7 @@ function ChannelContextMenu({
         onClick={onSwitch}
         className="w-full px-3 py-1.5 flex items-center gap-2.5 text-[12px] text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] transition-colors text-left"
       >
-        <Check size={14} className={isActive ? 'text-[var(--accent-gold)]' : 'text-[var(--text-muted)]'} />
+        <Check size={14} className={isActive ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)]'} />
         <span>切换到此频道</span>
         {isActive && <span className="ml-auto text-[10px] text-[var(--text-muted)]">当前</span>}
       </button>

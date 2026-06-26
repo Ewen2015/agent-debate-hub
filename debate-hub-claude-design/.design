@@ -1,0 +1,114 @@
+{
+  "name": "Debate Hub - Claude 风格 UI 设计",
+  "version": "1.0.0",
+  "description": "基于 Claude 设计系统的 Group Debate Agent Hub UI/UX 重新设计",
+  "config": {
+    "designLibrary": {
+      "name": "Claude",
+      "id": "dl_builtin_claude",
+      "version": "1.0.0",
+      "scope": "built-in-global",
+      "path": "/Users/ewang1/.trae-cn/design_libraries/dl_builtin_claude",
+      "versionSource": "metadata.json"
+    },
+    "deviceType": "desktop"
+  },
+  "data": [
+    {
+      "type": "page",
+      "id": "page-arena",
+      "title": "辩论主场 (Arena)",
+      "version": 1,
+      "createdAt": 1782452000000,
+      "canvasData": { "x": 0, "y": 0, "group": 0 },
+      "devMetadata": {
+        "htmlSrc": "pages/arena.html",
+        "deviceType": "desktop",
+        "pageIndex": 1
+      }
+    },
+    {
+      "type": "page",
+      "id": "page-roster",
+      "title": "Agent 团配置 (Roster)",
+      "version": 1,
+      "createdAt": 1782452001000,
+      "canvasData": { "x": 1, "y": 0, "group": 0 },
+      "devMetadata": {
+        "htmlSrc": "pages/roster.html",
+        "deviceType": "desktop",
+        "pageIndex": 2
+      }
+    },
+    {
+      "type": "page",
+      "id": "page-gateway",
+      "title": "模型接入配置 (Gateway)",
+      "version": 1,
+      "createdAt": 1782452002000,
+      "canvasData": { "x": 2, "y": 0, "group": 0 },
+      "devMetadata": {
+        "htmlSrc": "pages/gateway.html",
+        "deviceType": "desktop",
+        "pageIndex": 3
+      }
+    },
+    {
+      "type": "page",
+      "id": "page-report",
+      "title": "辩论报告 (Report)",
+      "version": 1,
+      "createdAt": 1782452003000,
+      "canvasData": { "x": 3, "y": 0, "group": 0 },
+      "devMetadata": {
+        "htmlSrc": "pages/report.html",
+        "deviceType": "desktop",
+        "pageIndex": 4
+      }
+    }
+  ],
+  "interactions": [
+    {
+      "id": "nav-roster",
+      "type": "visible",
+      "from": "page-arena",
+      "to": "page-roster",
+      "label": "打开 Roster"
+    },
+    {
+      "id": "nav-gateway",
+      "type": "visible",
+      "from": "page-arena",
+      "to": "page-gateway",
+      "label": "打开 Gateway"
+    },
+    {
+      "id": "nav-report",
+      "type": "visible",
+      "from": "page-arena",
+      "to": "page-report",
+      "label": "打开 Report"
+    },
+    {
+      "id": "back-to-arena-1",
+      "type": "hideEdge",
+      "from": "page-roster",
+      "to": "page-arena",
+      "label": "返回 Arena"
+    },
+    {
+      "id": "back-to-arena-2",
+      "type": "hideEdge",
+      "from": "page-gateway",
+      "to": "page-arena",
+      "label": "返回 Arena"
+    },
+    {
+      "id": "back-to-arena-3",
+      "type": "hideEdge",
+      "from": "page-report",
+      "to": "page-arena",
+      "label": "返回 Arena"
+    }
+  ]
+}

@@ -23,7 +23,7 @@ import { Chip } from '@/components/shared/Chip';
 import { Markdown } from '@/components/shared/Markdown';
 import type { AgentStance, DebateEvent, RosterAgent, RoundViewpoint, Source, Speech } from '@/types';
 
-type Tone = 'gold' | 'cyan' | 'rose' | 'violet' | 'neutral' | 'mute';
+type Tone = 'primary' | 'emerald' | 'rose' | 'violet' | 'neutral' | 'mute';
 
 type TimelineItem =
   | { id: string; ts: number; kind: 'speech'; speech: Speech }
@@ -33,9 +33,9 @@ type TimelineItem =
 const LONG_TEXT = 180;
 
 const STANCE_META: Record<AgentStance, { label: string; tone: Tone; color: string }> = {
-  pro: { label: '支持', tone: 'gold', color: '#B8A878' },
-  con: { label: '反对', tone: 'rose', color: '#D08877' },
-  neutral: { label: '中立', tone: 'cyan', color: '#6FB3A8' },
+  pro: { label: '支持', tone: 'primary', color: '#D97757' },
+  con: { label: '反对', tone: 'rose', color: '#D45B5B' },
+  neutral: { label: '中立', tone: 'emerald', color: '#7BA05B' },
 };
 
 const formatTime = (ts: number) => {
@@ -60,15 +60,15 @@ const channelNameFromQuestion = (question: string) => {
 const eventMeta = (type: DebateEvent['type']): { icon: ReactNode; label: string; tone: Tone } => {
   switch (type) {
     case 'think':
-      return { icon: <Brain size={13} />, label: '思考', tone: 'gold' };
+      return { icon: <Brain size={13} />, label: '思考', tone: 'primary' };
     case 'search':
-      return { icon: <Search size={13} />, label: '检索', tone: 'cyan' };
+      return { icon: <Search size={13} />, label: '检索', tone: 'emerald' };
     case 'cite':
-      return { icon: <BookOpenCheck size={13} />, label: '引用', tone: 'cyan' };
+      return { icon: <BookOpenCheck size={13} />, label: '引用', tone: 'emerald' };
     case 'interrupt':
       return { icon: <AlertTriangle size={13} />, label: '主持人', tone: 'rose' };
     case 'round-summary':
-      return { icon: <GitCompareArrows size={13} />, label: '观点总结', tone: 'gold' };
+      return { icon: <GitCompareArrows size={13} />, label: '观点总结', tone: 'primary' };
     case 'speak':
       return { icon: <MessageSquare size={13} />, label: '发言', tone: 'violet' };
     case 'system':
@@ -169,13 +169,13 @@ function SourceList({ sources }: { sources: Source[] }) {
       {sources.map((source) => (
         <li
           key={source.url}
-          className="rounded-xl border border-[var(--border-soft)] bg-[var(--bg-card)] px-3 py-2 hover:border-[var(--accent-cyan)]/30 transition-colors"
+          className="rounded-xl border border-[var(--border-soft)] bg-[var(--bg-card)] px-3 py-2 hover:border-[var(--accent-emerald)]/30 transition-colors"
         >
           <a
             href={source.url}
             target="_blank"
             rel="noreferrer"
-            className="text-[12px] text-[var(--accent-cyan)] hover:text-[var(--text-primary)] transition-colors"
+            className="text-[12px] text-[var(--accent-emerald)] hover:text-[var(--text-primary)] transition-colors"
           >
             {source.title}
           </a>
@@ -206,7 +206,7 @@ function References({ sources }: { sources: Source[] }) {
               href={s.url}
               target="_blank"
               rel="noreferrer"
-              className="text-[var(--accent-cyan)] hover:text-[var(--text-primary)] transition-colors"
+              className="text-[var(--accent-emerald)] hover:text-[var(--text-primary)] transition-colors"
             >
               {s.title}
             </a>
@@ -229,7 +229,7 @@ function Footnotes({ sources }: { sources: Source[] }) {
           href={s.url}
           target="_blank"
           rel="noreferrer"
-          className="text-[var(--accent-cyan)] hover:text-[var(--text-primary)] transition-colors"
+          className="text-[var(--accent-emerald)] hover:text-[var(--text-primary)] transition-colors"
           title={s.title}
         >
           <sup className="text-[10px] font-mono">{i + 1}</sup>
@@ -504,9 +504,9 @@ function EventMessage({ event, agents }: { event: DebateEvent; agents: RosterAge
             <Markdown
               className={`mt-1.5 text-[12px] leading-[20px] ${
                 event.type === 'think'
-                  ? 'font-mono text-[var(--accent-gold)]/85'
+                  ? 'font-mono text-[var(--accent-primary)]/85'
                   : event.type === 'search' || event.type === 'cite'
-                  ? 'text-[var(--accent-cyan)]/85'
+                  ? 'text-[var(--accent-emerald)]/85'
                   : 'text-[var(--text-muted)]'
               } ${!expanded && isLong ? 'line-clamp-2' : ''}`}
             >
@@ -566,10 +566,10 @@ function RoundSummaryCard({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="group mx-1 my-1.5 rounded-lg border border-[var(--accent-gold)]/25 bg-[var(--accent-gold)]/6 px-3 py-2"
+      className="group mx-1 my-1.5 rounded-lg border border-[var(--accent-primary)]/25 bg-[var(--accent-primary)]/6 px-3 py-2"
     >
       {/* 标题行 */}
-      <div className="flex items-center gap-2 text-[11px] text-[var(--accent-gold)]/80">
+      <div className="flex items-center gap-2 text-[11px] text-[var(--accent-primary)]/80">
         <GitCompareArrows size={13} className="shrink-0" />
         <span className="font-medium">{title} · 观点总结</span>
         <span className="font-mono text-[var(--text-muted)] ml-auto shrink-0">{formatTime(ts)}</span>
@@ -583,11 +583,11 @@ function RoundSummaryCard({
               <span>收敛度</span>
               <span className="relative inline-block w-24 h-1.5 rounded-full bg-[var(--bg-card-strong)] overflow-hidden align-middle">
                 <span
-                  className="absolute left-0 top-0 h-full rounded-full bg-[var(--accent-gold)]"
+                  className="absolute left-0 top-0 h-full rounded-full bg-[var(--accent-primary)]"
                   style={{ width: `${Math.round(convergence * 100)}%` }}
                 />
               </span>
-              <span className="font-mono text-[var(--accent-gold)]">{(convergence * 100).toFixed(0)}%</span>
+              <span className="font-mono text-[var(--accent-primary)]">{(convergence * 100).toFixed(0)}%</span>
             </>
           )}
           {typeof elapsedMs === 'number' && (
@@ -634,7 +634,7 @@ function RoundSummaryCard({
                     {STANCE_META[v.stance].label}
                   </span>
                   {v.evidenceCount > 0 && (
-                    <span className="text-[10px] text-[var(--accent-cyan)]/70 shrink-0">
+                    <span className="text-[10px] text-[var(--accent-emerald)]/70 shrink-0">
                       · {v.evidenceCount} 证据
                     </span>
                   )}
@@ -646,7 +646,7 @@ function RoundSummaryCard({
                   <button
                     type="button"
                     onClick={() => setExpanded(isExpanded ? null : v.agentId)}
-                    className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] text-[var(--accent-gold)]/80 hover:text-[var(--accent-gold)] transition-colors"
+                    className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] text-[var(--accent-primary)]/80 hover:text-[var(--accent-primary)] transition-colors"
                   >
                     {isExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
                     {isExpanded ? '收起' : isFallback ? '查看原发言' : '展开全文'}
@@ -720,7 +720,7 @@ export function DiscussionChannel() {
         {timeline.length === 0 ? (
           <div className="flex h-full min-h-[320px] items-center justify-center px-4 text-center">
             <div>
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--bg-card-strong)] text-[var(--accent-gold)]">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--bg-card-strong)] text-[var(--accent-primary)]">
                 <Hash size={24} />
               </div>
               <div className="font-display text-[14px] tracking-tightish text-[var(--text-primary)]">频道等待第一条消息</div>
@@ -771,14 +771,14 @@ export function DiscussionChannel() {
                     ? `向 #${channelName} 发送主持人介入`
                     : '开始讨论后可发送主持人介入'
                 }
-                className="min-h-[54px] w-full max-w-[calc(100%-110px)] resize-none rounded-xl border border-[var(--border-soft)] bg-transparent px-3 py-2 text-[13px] leading-relaxed text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent-violet)]/40 transition-colors"
+                className="min-h-[54px] w-full max-w-[calc(100%-110px)] resize-none rounded-xl border border-[var(--border-soft)] bg-transparent px-3 py-2 text-[13px] leading-relaxed text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent-primary)]/40 transition-colors"
               />
               <button
                 type="button"
                 onClick={submit}
                 disabled={!draft.trim() || !canInput || isPaused}
                 title="发送介入"
-                className="inline-flex h-10 items-center rounded-xl bg-[var(--accent-violet)] px-3.5 text-[12px] font-medium text-white transition-all hover:brightness-110 hover:shadow-[0_2px_8px_-2px_rgba(91,77,255,0.5)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:shadow-none"
+                className="inline-flex h-10 items-center rounded-xl bg-[var(--accent-primary)] px-3.5 text-[12px] font-medium text-white transition-all hover:brightness-105 hover:shadow-[var(--shadow-primary)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:shadow-none"
               >
                 <Send size={14} className="mr-1" />
                 发送

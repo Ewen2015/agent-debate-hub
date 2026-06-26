@@ -52,7 +52,7 @@ export function GatewayPanel() {
   return (
     <div className="flex flex-col gap-4">
       <div className="text-[11px] text-[var(--text-soft)] leading-relaxed">
-        配置 LLM Provider 以启用真实辩论。<strong className="text-[var(--accent-gold)]">必须填入 API Key、Base URL、Model</strong> 才能开始。推荐使用 Anthropic（原生联网搜索）。火山引擎 Ark Coding Plan 支持 thinking + function calling 搜索（需配置 Tavily/Serper Key）。也可通过 .env.local 配置 VITE_LLM_API_KEY / VITE_LLM_BASE_URL / VITE_LLM_MODEL。
+        配置 LLM Provider 以启用真实辩论。<strong className="text-[var(--accent-primary)]">必须填入 API Key、Base URL、Model</strong> 才能开始。推荐使用 Anthropic（原生联网搜索）。火山引擎 Ark Coding Plan 支持 thinking + function calling 搜索（需配置 Tavily/Serper Key）。也可通过 .env.local 配置 VITE_LLM_API_KEY / VITE_LLM_BASE_URL / VITE_LLM_MODEL。
       </div>
 
       <div className="divider-x" />
@@ -95,7 +95,7 @@ export function GatewayPanel() {
                 }}
                 className={`rounded-md px-2 py-1.5 text-[10px] uppercase tracking-widish transition-colors
                   ${newTpl === t.id
-                    ? 'bg-[var(--accent-gold)] text-[var(--bg-elev)]'
+                    ? 'bg-[var(--accent-primary)] text-[var(--bg-elev)]'
                     : 'bg-[var(--bg-card)] text-[var(--text-soft)] border border-[var(--border-soft)] hover:bg-[var(--bg-card-strong)]'}`}
               >
                 {t.label}
@@ -105,7 +105,7 @@ export function GatewayPanel() {
           <input
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
-            className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold)]"
+            className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)]"
             placeholder="显示名称"
           />
           <div className="flex gap-2">
@@ -124,7 +124,7 @@ export function GatewayPanel() {
             联网搜索引擎
           </span>
           {(tavilyKey || serperKey) ? (
-            <Chip tone="cyan" size="sm">已配置</Chip>
+            <Chip tone="emerald" size="sm">已配置</Chip>
           ) : (
             <Chip tone="rose" size="sm">未配置</Chip>
           )}
@@ -138,7 +138,7 @@ export function GatewayPanel() {
             value={tavilyKey}
             onChange={(e) => setSearchKey('tavilyKey', e.target.value)}
             placeholder="tvly-..."
-            className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)]"
+            className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-primary)]"
           />
         </Field>
         <Field label="Serper API Key">
@@ -147,7 +147,7 @@ export function GatewayPanel() {
             value={serperKey}
             onChange={(e) => setSearchKey('serperKey', e.target.value)}
             placeholder="serper-..."
-            className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)]"
+            className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-primary)]"
           />
         </Field>
       </div>
@@ -295,9 +295,9 @@ function ProviderCard({
         <button
           onClick={onActivate}
           className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors
-            ${active ? 'border-[var(--accent-gold)] bg-[var(--accent-gold)]/20' : 'border-[var(--border-soft)] hover:border-[var(--text-muted)]'}`}
+            ${active ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/20' : 'border-[var(--border-soft)] hover:border-[var(--text-muted)]'}`}
         >
-          {active && <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent-gold)]" />}
+          {active && <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)]" />}
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -305,7 +305,7 @@ function ProviderCard({
               {p.label}
             </span>
             {needsConfig && <Chip tone="rose" size="sm">未配置</Chip>}
-            {!needsConfig && p.enabled && <Chip tone="cyan" size="sm">Active</Chip>}
+            {!needsConfig && p.enabled && <Chip tone="emerald" size="sm">Active</Chip>}
           </div>
           <div className="text-[10px] text-[var(--text-muted)] tracking-widish uppercase mt-0.5 truncate font-mono">
             {p.baseUrl || '— 未配置 —'} · {p.model || '—'}
@@ -331,7 +331,7 @@ function ProviderCard({
             <input
               value={p.label}
               onChange={(e) => onUpdate({ label: e.target.value })}
-              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold)]"
+              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)]"
             />
           </Field>
           <Field label="Base URL">
@@ -339,7 +339,7 @@ function ProviderCard({
               value={p.baseUrl}
               onChange={(e) => onUpdate({ baseUrl: e.target.value })}
               placeholder="https://api.openai.com/v1"
-              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)]"
+              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-primary)]"
             />
           </Field>
           <Field label="API Key">
@@ -348,7 +348,7 @@ function ProviderCard({
               value={p.apiKey}
               onChange={(e) => onUpdate({ apiKey: e.target.value })}
               placeholder="sk-..."
-              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)]"
+              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-primary)]"
             />
           </Field>
           <Field label="Model">
@@ -356,7 +356,7 @@ function ProviderCard({
               value={p.model}
               onChange={(e) => onUpdate({ model: e.target.value })}
               placeholder="gpt-4o-mini / claude-3-5-sonnet / deepseek-chat"
-              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)]"
+              className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-primary)]"
             />
           </Field>
           <div className="grid grid-cols-2 gap-2">
@@ -368,7 +368,7 @@ function ProviderCard({
                 max="2"
                 value={p.temperature}
                 onChange={(e) => onUpdate({ temperature: parseFloat(e.target.value) })}
-                className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)]"
+                className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-primary)]"
               />
             </Field>
             <Field label="Max Tokens">
@@ -376,7 +376,7 @@ function ProviderCard({
                 type="number"
                 value={p.maxTokens}
                 onChange={(e) => onUpdate({ maxTokens: parseInt(e.target.value) })}
-                className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-gold)]"
+                className="w-full bg-[var(--bg-soft)] border border-[var(--border-soft)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] font-mono outline-none focus:border-[var(--accent-primary)]"
               />
             </Field>
           </div>
@@ -385,7 +385,7 @@ function ProviderCard({
               type="checkbox"
               checked={p.enableSearch}
               onChange={(e) => onUpdate({ enableSearch: e.target.checked })}
-              className="accent-[var(--accent-gold)]"
+              className="accent-[var(--accent-primary)]"
             />
             允许该模型启用网络搜索（Anthropic 原生联网；Ark/其他 Provider 需配置 Tavily/Serper Key）
           </label>
@@ -406,7 +406,7 @@ function ProviderCard({
               测试连接
             </Button>
             {testStatus.kind === 'ok' && (
-              <span className="inline-flex items-center gap-1 text-[11px] text-[var(--accent-cyan)]">
+              <span className="inline-flex items-center gap-1 text-[11px] text-[var(--accent-emerald)]">
                 <Check size={11} />
                 连接成功 · {testStatus.latency}ms{testStatus.modelEcho ? ` · ${testStatus.modelEcho}` : ''}
               </span>

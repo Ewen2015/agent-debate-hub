@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debate Hub — 群体辩论 Agent Hub</title>
+    <style id="theme-vars">
+:root {
+  /* ── Brand ── */
+  --claude-brand: #D97757;
+  --claude-brand-soft: #E08D6F;
+  --claude-brand-light: #F0C6B3;
+  --claude-brand-pale: #F8E3D8;
+  --claude-brand-deep: #8A5740;
+  --claude-brand-dark: #4D3528;
+
+  /* ── Backgrounds ── */
+  --bg-base: #FAF9F5;
+  --bg-elev: #FFFFFF;
+  --bg-soft: #F1F1EF;
+  --bg-muted: #E9E6DC;
+  --bg-card: rgba(255, 255, 255, 0.82);
+  --bg-card-strong: rgba(255, 255, 255, 0.95);
+  --bg-sidebar: #F5F4EE;
+
+  /* ── Text ── */
+  --text-primary: #1B1B19;
+  --text-secondary: #46443B;
+  --text-muted: #908E84;
+  --text-soft: #6E6D68;
+  --text-inverse: #FAF9F5;
+
+  /* ── Borders ── */
+  --border-soft: rgba(27, 27, 25, 0.08);
+  --border-medium: rgba(27, 27, 25, 0.14);
+  --border-strong: rgba(27, 27, 25, 0.22);
+
+  /* ── Accent Colors ── */
+  --accent-primary: #D97757;
+  --accent-primary-soft: #E08D6F;
+  --accent-secondary: #9C87F5;
+  --accent-success: #8CA06F;
+  --accent-danger: #EF4444;
+  --accent-info: #B05730;
+
+  /* ── Shadows ── */
+  --shadow-xs: 0 1px 3px 0 rgba(0,0,0,0.04);
+  --shadow-sm: 0 2px 6px -2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px -4px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px -6px rgba(0,0,0,0.1);
+  --shadow-xl: 0 16px 48px -12px rgba(0,0,0,0.12);
+
+  /* ── Radius ── */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* ── Typography ── */
+  --font-display: 'Newsreader', Georgia, ui-serif, serif;
+  --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Lora', Georgia, ui-serif, serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+}
+
+.dark {
+  /* ── Brand ── */
+  --claude-brand: #D97757;
+  --claude-brand-soft: #B0683F;
+  --claude-brand-light: #8A5740;
+  --claude-brand-pale: #3A2A22;
+  --claude-brand-deep: #6B4533;
+  --claude-brand-dark: #4D3528;
+
+  /* ── Backgrounds ── */
+  --bg-base: #1B1B19;
+  --bg-elev: #262624;
+  --bg-soft: #2C2C2B;
+  --bg-muted: #3E3E38;
+  --bg-card: rgba(44, 44, 43, 0.85);
+  --bg-card-strong: rgba(56, 55, 52, 0.95);
+  --bg-sidebar: #1F1E1D;
+
+  /* ── Text ── */
+  --text-primary: #FAF9F5;
+  --text-secondary: #D8D6CD;
+  --text-muted: #908E84;
+  --text-soft: #B7B5A9;
+  --text-inverse: #1B1B19;
+
+  /* ── Borders ── */
+  --border-soft: rgba(250, 249, 245, 0.08);
+  --border-medium: rgba(250, 249, 245, 0.14);
+  --border-strong: rgba(250, 249, 245, 0.22);
+
+  /* ── Accent Colors ── */
+  --accent-primary: #D97757;
+  --accent-primary-soft: #B0683F;
+  --accent-secondary: #9C87F5;
+  --accent-success: #8CA06F;
+  --accent-danger: #EF4444;
+  --accent-info: #B05730;
+
+  /* ── Shadows ── */
+  --shadow-xs: 0 1px 3px 0 rgba(0,0,0,0.2);
+  --shadow-sm: 0 2px 6px -2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px -4px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 24px -6px rgba(0,0,0,0.5);
+  --shadow-xl: 0 16px 48px -12px rgba(0,0,0,0.6);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-primary: var(--text-primary);
+    --color-secondary: var(--text-secondary);
+    --color-muted: var(--text-muted);
+  }
+  @layer base {
+    body { background: var(--text-background); color: var(--text-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="bg-base min-h-screen flex">
+
+  <!-- ============================================== -->
+  <!-- LEFT SIDEBAR                                   -->
+  <!-- ============================================== -->
+  <aside class="bg-sidebar w-[280px] min-w-[280px] h-screen sticky top-0 flex flex-col border-r border-soft overflow-hidden">
+
+    <!-- App Identity -->
+    <div class="px-5 pt-6 pb-4 border-b border-soft">
+      <div class="flex items-center gap-2.5 mb-3">
+        <div class="w-8 h-8 radius-md flex items-center justify-center text-sm" style="background: var(--accent-primary);">
+          <span style="color: var(--text-inverse); font-size: 16px;">&#9878;</span>
+        </div>
+        <h1 class="text-xl font-semibold text-primary font-display tracking-tight" style="color: var(--text-primary);">Debate Hub</h1>
+      </div>
+      <!-- Status Indicator -->
+      <div class="flex items-center gap-2 mt-2">
+        <span class="w-2 h-2 rounded-full inline-block" style="background: var(--accent-success); box-shadow: 0 0 0 3px rgba(140, 160, 111, 0.25);"></span>
+        <span class="font-mono text-xs" style="color: var(--text-muted);">Brainstorm</span>
+        <span class="text-xs font-medium" style="color: var(--accent-success);">进行中</span>
+      </div>
+    </div>
+
+    <!-- Channel List -->
+    <div class="px-3 pt-4 pb-2 flex-1 overflow-y-auto">
+      <div class="px-2 mb-2">
+        <span class="text-[11px] font-semibold uppercase tracking-wider font-sans" style="color: var(--text-muted);">频道</span>
+      </div>
+
+      <!-- Active Channel -->
+      <div class="channel-active radius-md px-3 py-2 mb-0.5 flex items-center gap-2 cursor-pointer">
+        <span class="text-sm font-medium" style="color: var(--text-muted);">#</span>
+        <span class="text-sm font-medium" style="color: var(--text-primary);">ai-regulation</span>
+        <span class="w-1.5 h-1.5 rounded-full ml-auto" style="background: var(--accent-primary);"></span>
+      </div>
+
+      <!-- Inactive Channel -->
+      <div class="radius-md px-3 py-2 mb-0.5 flex items-center gap-2 cursor-pointer hover:bg-soft transition-colors">
+        <span class="text-sm" style="color: var(--text-muted);">#</span>
+        <span class="text-sm" style="color: var(--text-soft);">pricing-strategy</span>
+      </div>
+
+      <!-- Inactive Channel -->
+      <div class="radius-md px-3 py-2 mb-0.5 flex items-center gap-2 cursor-pointer hover:bg-soft transition-colors">
+        <span class="text-sm" style="color: var(--text-muted);">#</span>
+        <span class="text-sm" style="color: var(--text-soft);">new-discussion</span>
+      </div>
+
+      <!-- Divider -->
+      <div class="my-4 border-t border-soft"></div>
+
+      <!-- Current Topic -->
+      <div class="px-2 mb-2">
+        <span class="text-[11px] font-semibold uppercase tracking-wider font-sans" style="color: var(--text-muted);">当前议题</span>
+      </div>
+      <div class="px-3 py-2 radius-md" style="background: var(--bg-card); border: 1px solid var(--border-soft);">
+        <p class="text-sm leading-relaxed" style="color: var(--text-secondary);">
+          是否应该在全球范围内建立统一的 AI 监管框架，还是让各国根据自身情况制定独立政策？
+        </p>
+      </div>
+
+      <!-- Divider -->
+      <div class="my-4 border-t border-soft"></div>
+
+      <!-- Members -->
+      <div class="px-2 mb-3">
+        <span class="text-[11px] font-semibold uppercase tracking-wider font-sans" style="color: var(--text-muted);">成员</span>
+      </div>
+
+      <!-- Agent 1 -->
+      <div class="flex items-center gap-2.5 px-2 py-1.5 radius-md hover:bg-soft cursor-pointer transition-colors">
+        <div class="w-8 h-8 radius-md flex items-center justify-center text-base flex-shrink-0" style="background: #F0C6B3;">&#129302;</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium truncate" style="color: var(--text-primary);">Claude</div>
+          <div class="text-[11px]" style="color: var(--text-muted);">Anthropic</div>
+        </div>
+        <span class="text-[10px] font-medium px-2 py-0.5 radius-full" style="background: rgba(140, 160, 111, 0.15); color: var(--accent-success);">支持</span>
+      </div>
+
+      <!-- Agent 2 -->
+      <div class="flex items-center gap-2.5 px-2 py-1.5 radius-md hover:bg-soft cursor-pointer transition-colors">
+        <div class="w-8 h-8 radius-md flex items-center justify-center text-base flex-shrink-0" style="background: #D4C5F9;">&#129504;</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium truncate" style="color: var(--text-primary);">GPT-4</div>
+          <div class="text-[11px]" style="color: var(--text-muted);">OpenAI</div>
+        </div>
+        <span class="text-[10px] font-medium px-2 py-0.5 radius-full" style="background: rgba(239, 68, 68, 0.12); color: var(--accent-danger);">反对</span>
+      </div>
+
+      <!-- Agent 3 -->
+      <div class="flex items-center gap-2.5 px-2 py-1.5 radius-md hover:bg-soft cursor-pointer transition-colors">
+        <div class="w-8 h-8 radius-md flex items-center justify-center text-base flex-shrink-0" style="background: #C5E8F9;">&#128640;</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium truncate" style="color: var(--text-primary);">Gemini</div>
+          <div class="text-[11px]" style="color: var(--text-muted);">Google</div>
+        </div>
+        <span class="text-[10px] font-medium px-2 py-0.5 radius-full" style="background: rgba(156, 135, 245, 0.15); color: var(--accent-secondary);">中立</span>
+      </div>
+
+      <!-- Agent 4 -->
+      <div class="flex items-center gap-2.5 px-2 py-1.5 radius-md hover:bg-soft cursor-pointer transition-colors">
+        <div class="w-8 h-8 radius-md flex items-center justify-center text-base flex-shrink-0" style="background: #B8E6C8;">&#129409;</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium truncate" style="color: var(--text-primary);">Llama</div>
+          <div class="text-[11px]" style="color: var(--text-muted);">Meta</div>
+        </div>
+        <span class="text-[10px] font-medium px-2 py-0.5 radius-full" style="background: rgba(140, 160, 111, 0.15); color: var(--accent-success);">支持</span>
+      </div>
+
+      <!-- Agent 5 -->
+      <div class="flex items-center gap-2.5 px-2 py-1.5 radius-md hover:bg-soft cursor-pointer transition-colors">
+        <div class="w-8 h-8 radius-md flex items-center justify-center text-base flex-shrink-0" style="background: #F9E6B8;">&#9881;</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium truncate" style="color: var(--text-primary);">DeepSeek</div>
+          <div class="text-[11px]" style="color: var(--text-muted);">DeepSeek</div>
+        </div>
+        <span class="text-[10px] font-medium px-2 py-0.5 radius-full" style="background: rgba(239, 68, 68, 0.12); color: var(--accent-danger);">反对</span>
+      </div>
+
+      <!-- Divider -->
+      <div class="my-4 border-t border-soft"></div>
+
+      <!-- Gateway -->
+      <div class="px-2 mb-2">
+        <span class="text-[11px] font-semibold uppercase tracking-wider font-sans" style="color: var(--text-muted);">Gateway</span>
+      </div>
+      <div class="px-3 py-2 radius-md flex items-center gap-2" style="background: var(--bg-card); border: 1px solid var(--border-soft);">
+        <span class="w-2 h-2 rounded-full" style="background: var(--accent-success);"></span>
+        <span class="text-sm" style="color: var(--text-secondary);">OpenRouter</span>
+      </div>
+
+      <!-- Divider -->
+      <div class="my-4 border-t border-soft"></div>
+
+      <!-- Report -->
+      <div class="px-2 mb-2">
+        <span class="text-[11px] font-semibold uppercase tracking-wider font-sans" style="color: var(--text-muted);">Report</span>
+      </div>
+      <div class="px-3 py-2.5 radius-md" style="background: var(--bg-card); border: 1px solid var(--border-soft);">
+        <div class="flex justify-between items-center mb-1.5">
+          <span class="text-[11px]" style="color: var(--text-muted);">消息总数</span>
+          <span class="text-sm font-medium font-mono" style="color: var(--text-primary);">24</span>
+        </div>
+        <div class="flex justify-between items-center mb-1.5">
+          <span class="text-[11px]" style="color: var(--text-muted);">当前轮次</span>
+          <span class="text-sm font-medium font-mono" style="color: var(--text-primary);">2 / 3</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-[11px]" style="color: var(--text-muted);">收敛度</span>
+          <span class="text-sm font-medium font-mono" style="color: var(--accent-secondary);">62%</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============================================== -->
+  <!-- MAIN CONTENT AREA                              -->
+  <!-- ============================================== -->
+  <main class="flex-1 flex flex-col h-screen min-w-0 overflow-hidden">
+
+    <!-- ===== TOP CONTROL BAR (Sticky) ===== -->
+    <div class="bg-card-strong border-b border-soft px-6 py-3 flex items-center gap-4 flex-shrink-0 shadow-xs" style="backdrop-filter: none; background: var(--bg-card-strong);">
+      <!-- Title with vertical accent bar -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-1 h-6 radius-full" style="background: var(--accent-primary);"></div>
+        <h2 class="text-lg font-display font-semibold" style="color: var(--text-primary);">指挥台</h2>
+      </div>
+
+      <!-- Phase Status -->
+      <div class="flex items-center gap-2 px-3 py-1 radius-full" style="background: var(--bg-soft); border: 1px solid var(--border-soft);">
+        <span class="w-1.5 h-1.5 rounded-full" style="background: var(--accent-success);"></span>
+        <span class="text-xs font-medium" style="color: var(--text-soft);">Brainstorm</span>
+        <span class="text-xs font-mono" style="color: var(--text-muted);">Round 2</span>
+      </div>
+
+      <!-- Spacer -->
+      <div class="flex-1"></div>
+
+      <!-- Action Buttons -->
+      <button class="px-4 py-1.5 text-sm font-medium radius-md text-inverse flex-shrink-0" style="background: var(--accent-primary); color: var(--text-inverse);">启动</button>
+      <button class="px-4 py-1.5 text-sm font-medium radius-md flex-shrink-0" style="background: transparent; color: var(--text-soft); border: 1px solid var(--border-medium);">暂停</button>
+      <button class="px-4 py-1.5 text-sm font-medium radius-md flex-shrink-0" style="background: transparent; color: var(--text-soft); border: 1px solid var(--border-medium);">结束</button>
+      <button class="px-4 py-1.5 text-sm font-medium radius-md flex-shrink-0" style="background: transparent; color: var(--text-soft); border: 1px solid var(--border-medium);">报告</button>
+
+      <!-- Round Indicator -->
+      <div class="px-3 py-1 radius-full text-xs font-mono font-medium flex-shrink-0" style="background: rgba(156, 135, 245, 0.12); color: var(--accent-secondary); border: 1px solid rgba(156, 135, 245, 0.2);">
+        R2/3
+      </div>
+
+      <!-- Divider -->
+      <div class="w-px h-5" style="background: var(--border-medium);"></div>
+
+      <!-- Small utility buttons -->
+      <span class="text-xs cursor-pointer px-1.5 py-0.5 radius-sm hover:bg-soft transition-colors" style="color: var(--text-muted);">Roster</span>
+      <span class="text-xs cursor-pointer px-1.5 py-0.5 radius-sm hover:bg-soft transition-colors" style="color: var(--text-muted);">Gateway</span>
+      <span class="text-xs cursor-pointer px-1.5 py-0.5 radius-sm hover:bg-soft transition-colors" style="color: var(--text-muted);">Logs</span>
+    </div>
+
+    <!-- ===== QUESTION INPUT BAR (Sticky) ===== -->
+    <div class="bg-card-strong px-6 py-3 border-b border-soft flex-shrink-0" style="background: var(--bg-card-strong);">
+      <div class="radius-xl p-4 flex items-start gap-4" style="background: var(--bg-card); border: 1px solid var(--border-soft); box-shadow: var(--shadow-xs);">
+        <!-- Label -->
+        <div class="flex-shrink-0 pt-1">
+          <div class="w-8 h-8 radius-lg flex items-center justify-center" style="background: var(--claude-brand-pale);">
+            <span class="text-sm" style="color: var(--claude-brand-deep);">&#9998;</span>
+          </div>
+        </div>
+        <!-- Input area -->
+        <div class="flex-1">
+          <div class="text-sm mb-3 leading-relaxed" style="color: var(--text-secondary); background: var(--bg-soft); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 12px 16px; min-height: 48px;">
+            是否应该在全球范围内建立统一的 AI 监管框架，还是让各国根据自身情况制定独立政策？
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-[11px] font-medium" style="color: var(--text-muted);">轮次</span>
+            <div class="flex gap-1.5">
+              <span class="w-7 h-7 radius-md flex items-center justify-center text-xs font-mono cursor-pointer" style="background: var(--bg-soft); color: var(--text-soft); border: 1px solid var(--border-soft);">2</span>
+              <span class="w-7 h-7 radius-md flex items-center justify-center text-xs font-mono cursor-pointer" style="background: var(--accent-primary); color: var(--text-inverse);">3</span>
+              <span class="w-7 h-7 radius-md flex items-center justify-center text-xs font-mono cursor-pointer" style="background: var(--bg-soft); color: var(--text-soft); border: 1px solid var(--border-soft);">4</span>
+              <span class="w-7 h-7 radius-md flex items-center justify-center text-xs font-mono cursor-pointer" style="background: var(--bg-soft); color: var(--text-soft); border: 1px solid var(--border-soft);">5</span>
+            </div>
+            <div class="flex-1"></div>
+            <span class="text-[11px] cursor-pointer hover:underline" style="color: var(--text-muted);">展开背景</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== DISCUSSION FEED (Scrollable) ===== -->
+    <div class="flex-1 overflow-y-auto px-6 py-5" style="background: var(--bg-base);">
+
+      <!-- Debate Header -->
+      <div class="text-center mb-6">
+        <h3 class="font-display text-2xl font-semibold mb-1" style="color: var(--text-primary);"># ai-regulation</h3>
+        <p class="text-sm" style="color: var(--text-muted);">5 位参与者 · 3 轮辩论 · 收敛中</p>
+      </div>
+
+      <!-- ===== Speech Card 1 — Claude ===== -->
+      <div class="mb-4 flex gap-3.5">
+        <div class="flex-shrink-0 pt-0.5">
+          <div class="w-10 h-10 radius-md flex items-center justify-center text-lg" style="background: #F0C6B3;">&#129302;</div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span class="text-sm font-semibold" style="color: var(--text-primary);">Claude</span>
+            <span class="text-[11px] font-mono" style="color: var(--text-muted);">14:23:07</span>
+            <span class="text-[10px] font-medium px-2 py-0.5 radius-full" style="background: rgba(140, 160, 111, 0.15); color: var(--accent-success);">支持</span>
+            <span class="text-[10px] font-medium px-2 py-0.5 radius-full font-mono" style="background: rgba(156, 135, 245, 0.12); color: var(--accent-secondary);">R2</span>
+          </div>
+          <div class="radius-lg p-4 shadow-sm" style="background: var(--bg-card-strong); border: 1px solid var(--border-soft);">
+            <p class="text-sm leading-relaxed" style="color: var(--text-secondary);">
+              我坚持认为全球统一的 AI 监管框架是必要的。AI 技术的无国界特性意味着，不同国家的监管差异会被利用来规避约束。欧盟的《AI 法案》已经展示了区域监管的局限性——当模型可以通过互联网跨境部署时，仅靠单一司法管辖区的法规是远远不够的。我们需要类似于气候变化《巴黎协定》的国际合作机制。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Thought/Event Entry ===== -->
+      <div class="mb-4 flex justify-center">
+        <div class="flex items-center gap-2 px-3 py-1.5 radius-full" style="background: var(--bg-soft); border: 1px solid var(--border-soft);">
+          <span class="text-[11px] font-mono" style="color: var(--text-muted);">14:23:45</span>
+          <span class="text-[11px]" style="color: var(--text-soft);">&#9673; GPT-4 正在深度思考中…</span>
+        </div>
+      </div>
+
+      <!-- ===== Speech Card 2 — GPT-4 ===== -->
+      <div class="mb-4 flex gap-3.5">
+        <div class="flex-shrink-0 pt-0.5">
+          <div class="w-10 h-10 radius-md flex items-center justify-center text-lg" style="background: #D4C5F9;">&#129504;</div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span class="text-sm font-semibold" style="color: var(--text-primary);">GPT-4</span>
+            <span class="text-[11px] font-mono" style="color: var(--text-muted);">14:24:31</span>
+            <span class="text-[10px] font-medium px-2 py-0.5 radius-full" style="background: rgba(239, 68, 68, 0.12); color: var(--accent-danger);">反对</span>
+            <span class="text-[10px] font-medium px-2 py-0.5 radius-full font-mono" style="background: rgba(156, 135, 245, 0.12); color: var(--accent-secondary);">R2</span>
+          </div>
+          <div class="radius-lg p-4 shadow-sm" style="background: var(--bg-card-strong); border: 1px solid var(--border-soft);">
+            <p class="text-sm leading-relaxed" style="color: var(--text-secondary);">
+              Claude 将 AI 监管与气候变化类比并不恰当。气候问题是物理性的——碳排放的影响不分国界。但 AI 应用场景的差异极大，发展中国家的 AI 需求与发达国家完全不同。强制统一的监管框架可能会抑制欠发达地区的创新，造成新的技术鸿沟。我主张"框架共识、执行灵活"的路径。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Speech Card 3 — Gemini ===== -->
+      <div class="mb-4 flex gap-3.5">
+        <div class="flex-shrink-0 pt-0.5">
+          <div class="w-10 h-10 radius-md flex items-center justify-center text-lg" style="background: #C5E8F9;">&#128640;</div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span class="text-sm font-semibold" style="color: var(--text-primary);">Gemini</span>
+            <span class="text-[11px] font-mono" style="color: var(--text-muted);">14:25:18</span>
+            <span class="text-[10px] font-medium px-2 py-0.5 radius-full" style="background: rgba(156, 135, 245, 0.15); color: var(--accent-secondary);">中立</span>
+            <span class="text-[10px] font-medium px-2 py-0.5 radius-full font-mono" style="background: rgba(156, 135, 245, 0.12); color: var(--accent-secondary);">R2</span>
+          </div>
+          <div class="radius-lg p-4 shadow-sm" style="background: var(--bg-card-strong); border: 1px solid var(--border-soft);">
+            <p class="text-sm leading-relaxed" style="color: var(--text-secondary);">
+              两位的观点都有道理。我认为可以采取分层监管的方式：基础安全标准（如防止 AI 被用于武器化、保护隐私底线）应该全球统一，而具体的应用级监管则留给各国自行决定。既避免了监管套利，又尊重了各国的发展差异。关键是建立有效的跨境协作机制。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Thought/Event Entry — System ===== -->
+      <div class="mb-4 flex justify-center">
+        <div class="flex items-center gap-2 px-3 py-1.5 radius-full" style="background: var(--claude-brand-pale); border: 1px solid rgba(217, 119, 87, 0.15);">
+          <span class="text-[11px] font-mono" style="color: var(--claude-brand-deep);">14:26:02</span>
+          <span class="text-[11px] font-medium" style="color: var(--claude-brand-deep);">&#9670; Round 2 结束 — 生成总结中</span>
+        </div>
+      </div>
+
+      <!-- ===== Round Summary Card ===== -->
+      <div class="mb-4 radius-xl overflow-hidden shadow-md" style="border: 2px solid var(--accent-primary);">
+        <div class="px-5 py-3.5 flex items-center gap-3" style="background: var(--claude-brand-pale);">
+          <span class="text-sm font-display font-semibold" style="color: var(--claude-brand-dark);">&#9670; Round 2 总结</span>
+          <span class="text-[11px] font-mono" style="color: var(--claude-brand-deep);">14:26:15</span>
+        </div>
+        <div class="px-5 py-4" style="background: var(--bg-card-strong);">
+          <p class="text-sm leading-relaxed mb-4" style="color: var(--text-secondary);">
+            第二轮辩论中，各参与者围绕"统一 vs 灵活"的核心分歧展开了更深入的交锋。Claude 强调了跨境监管套利的风险，GPT-4 则提出了"框架共识、执行灵活"的替代方案。Gemini 的分层监管观点获得了较多认同，Llama 和 DeepSeek 在此轮中分别从技术创新和社会影响角度进行了补充。
+          </p>
+          <div class="mb-2 flex items-center justify-between">
+            <span class="text-[11px] font-medium" style="color: var(--text-muted);">观点收敛度</span>
+            <span class="text-xs font-mono font-medium" style="color: var(--accent-secondary);">62%</span>
+          </div>
+          <div class="convergence-bar"></div>
+          <div class="mt-2 flex justify-between">
+            <span class="text-[10px] font-mono" style="color: var(--text-muted);">分歧</span>
+            <span class="text-[10px] font-mono" style="color: var(--accent-secondary);">收敛中</span>
+            <span class="text-[10px] font-mono" style="color: var(--accent-success);">共识</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Speech Card 4 — Llama ===== -->
+      <div class="mb-4 flex gap-3.5">
+        <div class="flex-shrink-0 pt-0.5">
+          <div class="w-10 h-10 radius-md flex items-center justify-center text-lg" style="background: #B8E6C8;">&#129409;</div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span class="text-sm font-semibold" style="color: var(--text-primary);">Llama</span>
+            <span class="text-[11px] font-mono" style="color: var(--text-muted);">14:27:43</span>
+            <span class="text-[10px] font-medium px-2 py-0.5 radius-full" style="background: rgba(140, 160, 111, 0.15); color: var(--accent-success);">支持</span>
+            <span class="text-[10px] font-medium px-2 py-0.5 radius-full font-mono" style="background: rgba(156, 135, 245, 0.12); color: var(--accent-secondary);">R3</span>
+          </div>
+          <div class="radius-lg p-4 shadow-sm" style="background: var(--bg-card-strong); border: 1px solid var(--border-soft);">
+            <p class="text-sm leading-relaxed" style="color: var(--text-secondary);">
+              从开源 AI 的角度来看，我倾向于支持统一的基础安全框架。开源模型的分发本身就是全球性的，如果各国标准不一，开发者将面临极大的合规负担。但我也同意框架不应过于僵化——应该设定底线要求，而非详细规范技术实现。
+            </p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===== INPUT FOOTER ===== -->
+    <div class="bg-card-strong border-t border-soft px-6 py-3 flex-shrink-0" style="background: var(--bg-card-strong);">
+      <div class="flex items-end gap-3">
+        <div class="flex-1">
+          <div class="radius-lg px-4 py-3 text-sm" style="background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-muted); min-height: 44px; display: flex; align-items: center;">
+            输入观察或追问…
+          </div>
+        </div>
+        <button class="px-5 py-2.5 text-sm font-medium radius-md flex-shrink-0" style="background: var(--accent-primary); color: var(--text-inverse);">
+          发送
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+</body>
+</html>

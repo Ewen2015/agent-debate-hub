@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Roster — Group Debate Agent Hub</title>
+    <style id="theme-vars">
+:root {
+  /* ── Brand ── */
+  --claude-brand: #D97757;
+  --claude-brand-soft: #E08D6F;
+  --claude-brand-light: #F0C6B3;
+  --claude-brand-pale: #F8E3D8;
+  --claude-brand-deep: #8A5740;
+  --claude-brand-dark: #4D3528;
+
+  /* ── Backgrounds ── */
+  --bg-base: #FAF9F5;
+  --bg-elev: #FFFFFF;
+  --bg-soft: #F1F1EF;
+  --bg-muted: #E9E6DC;
+  --bg-card: rgba(255, 255, 255, 0.82);
+  --bg-card-strong: rgba(255, 255, 255, 0.95);
+  --bg-sidebar: #F5F4EE;
+
+  /* ── Text ── */
+  --text-primary: #1B1B19;
+  --text-secondary: #46443B;
+  --text-muted: #908E84;
+  --text-soft: #6E6D68;
+  --text-inverse: #FAF9F5;
+
+  /* ── Borders ── */
+  --border-soft: rgba(27, 27, 25, 0.08);
+  --border-medium: rgba(27, 27, 25, 0.14);
+  --border-strong: rgba(27, 27, 25, 0.22);
+
+  /* ── Accent Colors ── */
+  --accent-primary: #D97757;
+  --accent-primary-soft: #E08D6F;
+  --accent-secondary: #9C87F5;
+  --accent-success: #8CA06F;
+  --accent-danger: #EF4444;
+  --accent-info: #B05730;
+
+  /* ── Shadows ── */
+  --shadow-xs: 0 1px 3px 0 rgba(0,0,0,0.04);
+  --shadow-sm: 0 2px 6px -2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px -4px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px -6px rgba(0,0,0,0.1);
+  --shadow-xl: 0 16px 48px -12px rgba(0,0,0,0.12);
+
+  /* ── Radius ── */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* ── Typography ── */
+  --font-display: 'Newsreader', Georgia, ui-serif, serif;
+  --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Lora', Georgia, ui-serif, serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+}
+
+.dark {
+  /* ── Brand ── */
+  --claude-brand: #D97757;
+  --claude-brand-soft: #B0683F;
+  --claude-brand-light: #8A5740;
+  --claude-brand-pale: #3A2A22;
+  --claude-brand-deep: #6B4533;
+  --claude-brand-dark: #4D3528;
+
+  /* ── Backgrounds ── */
+  --bg-base: #1B1B19;
+  --bg-elev: #262624;
+  --bg-soft: #2C2C2B;
+  --bg-muted: #3E3E38;
+  --bg-card: rgba(44, 44, 43, 0.85);
+  --bg-card-strong: rgba(56, 55, 52, 0.95);
+  --bg-sidebar: #1F1E1D;
+
+  /* ── Text ── */
+  --text-primary: #FAF9F5;
+  --text-secondary: #D8D6CD;
+  --text-muted: #908E84;
+  --text-soft: #B7B5A9;
+  --text-inverse: #1B1B19;
+
+  /* ── Borders ── */
+  --border-soft: rgba(250, 249, 245, 0.08);
+  --border-medium: rgba(250, 249, 245, 0.14);
+  --border-strong: rgba(250, 249, 245, 0.22);
+
+  /* ── Accent Colors ── */
+  --accent-primary: #D97757;
+  --accent-primary-soft: #B0683F;
+  --accent-secondary: #9C87F5;
+  --accent-success: #8CA06F;
+  --accent-danger: #EF4444;
+  --accent-info: #B05730;
+
+  /* ── Shadows ── */
+  --shadow-xs: 0 1px 3px 0 rgba(0,0,0,0.2);
+  --shadow-sm: 0 2px 6px -2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px -4px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 24px -6px rgba(0,0,0,0.5);
+  --shadow-xl: 0 16px 48px -12px rgba(0,0,0,0.6);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-primary: var(--text-primary);
+    --color-secondary: var(--text-secondary);
+    --color-muted: var(--text-muted);
+  }
+  @layer base {
+    body { background: var(--text-background); color: var(--text-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem;">
+
+  <!-- Standalone Roster Panel -->
+  <div
+    style="
+      width: 460px;
+      max-height: calc(100vh - 80px);
+      background: var(--bg-elev);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-md), 0 20px 60px -12px rgba(0,0,0,0.10);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    "
+  >
+    <!-- Header -->
+    <div style="padding: 28px 28px 0 28px; flex-shrink: 0;">
+      <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+        <div>
+          <h1 style="
+            font-family: var(--font-display);
+            font-size: 28px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin: 0;
+            line-height: 1.2;
+          ">Roster</h1>
+          <p style="
+            font-family: var(--font-sans);
+            font-size: 13px;
+            color: var(--text-muted);
+            margin: 6px 0 0 0;
+            font-weight: 400;
+          ">Agent 团配置</p>
+        </div>
+        <button class="close-btn" title="关闭">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <line x1="4" y1="4" x2="12" y2="12"></line>
+            <line x1="12" y1="4" x2="4" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Scrollable Body -->
+    <div class="panel-scroll" style="padding: 24px 28px 28px 28px; overflow-y: auto; flex: 1;">
+
+      <!-- Group Size Selector -->
+      <div>
+        <div class="section-label" style="margin-bottom: 12px;">Group Size</div>
+        <div style="display: flex; gap: 8px;">
+          <button class="size-btn">2</button>
+          <button class="size-btn">3</button>
+          <button class="size-btn">4</button>
+          <button class="size-btn size-btn-active">5</button>
+          <button class="size-btn">6</button>
+          <button class="size-btn">7</button>
+          <button class="size-btn">8</button>
+        </div>
+      </div>
+
+      <hr class="gradient-divider">
+
+      <!-- Active Roster -->
+      <div>
+        <div class="section-label" style="margin-bottom: 14px;">Active Roster</div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+
+          <!-- Agent 1: 理想主义者 -->
+          <div class="agent-card" style="
+            background: var(--bg-card);
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius-lg);
+            padding: 16px 18px;
+            box-shadow: var(--shadow-xs);
+            transition: all 0.2s ease;
+            position: relative;
+          ">
+            <div style="display: flex; align-items: flex-start; gap: 14px;">
+              <!-- Avatar -->
+              <div style="
+                width: 44px;
+                height: 44px;
+                border-radius: 10px;
+                background: linear-gradient(135deg, #FDDFB5 0%, #F0C6B3 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 20px;
+                flex-shrink: 0;
+              ">💡</div>
+              <!-- Info -->
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span style="
+                    font-family: var(--font-display);
+                    font-size: 17px;
+                    font-weight: 500;
+                    color: var(--text-primary);
+                  ">理想主义者</span>
+                  <span class="stance-support" style="
+                    font-size: 11px;
+                    font-weight: 600;
+                    padding: 2px 10px;
+                    border-radius: var(--radius-full);
+                    letter-spacing: 0.02em;
+                  ">支持</span>
+                </div>
+                <p style="
+                  font-size: 12.5px;
+                  color: var(--text-muted);
+                  margin: 4px 0 10px 0;
+                  font-weight: 400;
+                  line-height: 1.4;
+                ">追求最优解的乐观主义者</p>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  <span class="focus-chip">创新</span>
+                  <span class="focus-chip">技术</span>
+                  <span class="focus-chip">未来</span>
+                </div>
+              </div>
+              <!-- Actions -->
+              <div class="card-actions" style="
+                display: flex;
+                gap: 4px;
+                flex-shrink: 0;
+                position: absolute;
+                top: 12px;
+                right: 14px;
+              ">
+                <button style="
+                  width: 30px;
+                  height: 30px;
+                  border-radius: var(--radius-sm);
+                  border: 1px solid var(--border-soft);
+                  background: var(--bg-elev);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  cursor: pointer;
+                  color: var(--text-muted);
+                " title="编辑">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z"/>
+                  </svg>
+                </button>
+                <button style="
+                  width: 30px;
+                  height: 30px;
+                  border-radius: var(--radius-sm);
+                  border: 1px solid var(--border-soft);
+                  background: var(--bg-elev);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  cursor: pointer;
+                  color: var(--text-muted);
+                " title="删除">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="2 4 14 4"></polyline>
+                    <path d="M12 4v9a2 2 0 01-2 2H6a2 2 0 01-2-2V4"/>
+                    <path d="M6 2h4"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Agent 2: 怀疑论者 -->
+          <div class="agent-card" style="
+            background: var(--bg-card);
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius-lg);
+            padding: 16px 18px;
+            box-shadow: var(--shadow-xs);
+            transition: all 0.2s ease;
+            position: relative;
+          ">
+            <div style="display: flex; align-items: flex-start; gap: 14px;">
+              <div style="
+                width: 44px;
+                height: 44px;
+                border-radius: 10px;
+                background: linear-gradient(135deg, #E0C4D8 0%, #D4B4C8 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 20px;
+                flex-shrink: 0;
+              ">🔍</div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span style="
+                    font-family: var(--font-display);
+                    font-size: 17px;
+                    font-weight: 500;
+                    color: var(--text-primary);
+                  ">怀疑论者</span>
+                  <span class="stance-oppose" style="
+                    font-size: 11px;
+                    font-weight: 600;
+                    padding: 2px 10px;
+                    border-radius: var(--radius-full);
+                    letter-spacing: 0.02em;
+                  ">反对</span>
+                </div>
+                <p style="
+                  font-size: 12.5px;
+                  color: var(--text-muted);
+                  margin: 4px 0 10px 0;
+                  font-weight: 400;
+                  line-height: 1.4;
+                ">审视每个假设的批判者</p>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  <span class="focus-chip">风险</span>
+                  <span class="focus-chip">证据</span>
+                  <span class="focus-chip">逻辑</span>
+                </div>
+              </div>
+              <div class="card-actions" style="
+                display: flex;
+                gap: 4px;
+                flex-shrink: 0;
+                position: absolute;
+                top: 12px;
+                right: 14px;
+              ">
+                <button style="
+                  width: 30px; height: 30px;
+                  border-radius: var(--radius-sm);
+                  border: 1px solid var(--border-soft);
+                  background: var(--bg-elev);
+                  display: flex; align-items: center; justify-content: center;
+                  cursor: pointer; color: var(--text-muted);
+                " title="编辑">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z"/>
+                  </svg>
+                </button>
+                <button style="
+                  width: 30px; height: 30px;
+                  border-radius: var(--radius-sm);
+                  border: 1px solid var(--border-soft);
+                  background: var(--bg-elev);
+                  display: flex; align-items: center; justify-content: center;
+                  cursor: pointer; color: var(--text-muted);
+                " title="删除">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="2 4 14 4"></polyline>
+                    <path d="M12 4v9a2 2 0 01-2 2H6a2 2 0 01-2-2V4"/>
+                    <path d="M6 2h4"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Agent 3: 工程师 -->
+          <div class="agent-card" style="
+            background: var(--bg-card);
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius-lg);
+            padding: 16px 18px;
+            box-shadow: var(--shadow-xs);
+            transition: all 0.2s ease;
+            position: relative;
+          ">
+            <div style="display: flex; align-items: flex-start; gap: 14px;">
+              <div style="
+                width: 44px;
+                height: 44px;
+                border-radius: 10px;
+                background: linear-gradient(135deg, #C8D8C0 0%, #B0C8A4 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 20px;
+                flex-shrink: 0;
+              ">⚙️</div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span style="
+                    font-family: var(--font-display);
+                    font-size: 17px;
+                    font-weight: 500;
+                    color: var(--text-primary);
+                  ">工程师</span>
+                  <span class="stance-neutral" style="
+                    font-size: 11px;
+                    font-weight: 600;
+                    padding: 2px 10px;
+                    border-radius: var(--radius-full);
+                    letter-spacing: 0.02em;
+                  ">中立</span>
+                </div>
+                <p style="
+                  font-size: 12.5px;
+                  color: var(--text-muted);
+                  margin: 4px 0 10px 0;
+                  font-weight: 400;
+                  line-height: 1.4;
+                ">务实的技术实现者</p>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  <span class="focus-chip">可行性</span>
+                  <span class="focus-chip">架构</span>
+                  <span class="focus-chip">成本</span>
+                </div>
+              </div>
+              <div class="card-actions" style="
+                display: flex;
+                gap: 4px;
+                flex-shrink: 0;
+                position: absolute;
+                top: 12px;
+                right: 14px;
+              ">
+                <button style="
+                  width: 30px; height: 30px;
+                  border-radius: var(--radius-sm);
+                  border: 1px solid var(--border-soft);
+                  background: var(--bg-elev);
+                  display: flex; align-items: center; justify-content: center;
+                  cursor: pointer; color: var(--text-muted);
+                " title="编辑">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z"/>
+                  </svg>
+                </button>
+                <button style="
+                  width: 30px; height: 30px;
+                  border-radius: var(--radius-sm);
+                  border: 1px solid var(--border-soft);
+                  background: var(--bg-elev);
+                  display: flex; align-items: center; justify-content: center;
+                  cursor: pointer; color: var(--text-muted);
+                " title="删除">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="2 4 14 4"></polyline>
+                    <path d="M12 4v9a2 2 0 01-2 2H6a2 2 0 01-2-2V4"/>
+                    <path d="M6 2h4"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Agent 4: 数据极客 -->
+          <div class="agent-card" style="
+            background: var(--bg-card);
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius-lg);
+            padding: 16px 18px;
+            box-shadow: var(--shadow-xs);
+            transition: all 0.2s ease;
+            position: relative;
+          ">
+            <div style="display: flex; align-items: flex-start; gap: 14px;">
+              <div style="
+                width: 44px;
+                height: 44px;
+                border-radius: 10px;
+                background: linear-gradient(135deg, #C5D8F0 0%, #AAC4E8 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 20px;
+                flex-shrink: 0;
+              ">📊</div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span style="
+                    font-family: var(--font-display);
+                    font-size: 17px;
+                    font-weight: 500;
+                    color: var(--text-primary);
+                  ">数据极客</span>
+                  <span class="stance-support" style="
+                    font-size: 11px;
+                    font-weight: 600;
+                    padding: 2px 10px;
+                    border-radius: var(--radius-full);
+                    letter-spacing: 0.02em;
+                  ">支持</span>
+                </div>
+                <p style="
+                  font-size: 12.5px;
+                  color: var(--text-muted);
+                  margin: 4px 0 10px 0;
+                  font-weight: 400;
+                  line-height: 1.4;
+                ">用数据说话的分析师</p>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  <span class="focus-chip">数据</span>
+                  <span class="focus-chip">指标</span>
+                  <span class="focus-chip">趋势</span>
+                </div>
+              </div>
+              <div class="card-actions" style="
+                display: flex;
+                gap: 4px;
+                flex-shrink: 0;
+                position: absolute;
+                top: 12px;
+                right: 14px;
+              ">
+                <button style="
+                  width: 30px; height: 30px;
+                  border-radius: var(--radius-sm);
+                  border: 1px solid var(--border-soft);
+                  background: var(--bg-elev);
+                  display: flex; align-items: center; justify-content: center;
+                  cursor: pointer; color: var(--text-muted);
+                " title="编辑">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z"/>
+                  </svg>
+                </button>
+                <button style="
+                  width: 30px; height: 30px;
+                  border-radius: var(--radius-sm);
+                  border: 1px solid var(--border-soft);
+                  background: var(--bg-elev);
+                  display: flex; align-items: center; justify-content: center;
+                  cursor: pointer; color: var(--text-muted);
+                " title="删除">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="2 4 14 4"></polyline>
+                    <path d="M12 4v9a2 2 0 01-2 2H6a2 2 0 01-2-2V4"/>
+                    <path d="M6 2h4"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <hr class="gradient-divider">
+
+      <!-- Persona Library (Collapsed) -->
+      <div>
+        <div class="collapse-toggle collapsed" style="margin-bottom: 0;">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="var(--text-muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="2 4 6 8 10 4"></polyline>
+          </svg>
+          <div>
+            <span class="section-label">Persona Library</span>
+            <span style="
+              font-size: 11px;
+              color: var(--text-muted);
+              margin-left: 8px;
+              font-weight: 400;
+              letter-spacing: 0;
+            ">8 presets</span>
+          </div>
+        </div>
+
+        <!-- Collapsed grid: hidden by default in the static mockup -->
+        <div style="
+          display: none;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          margin-top: 14px;
+        ">
+
+          <div class="persona-card">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+              <span style="font-size: 18px;">🧠</span>
+              <span style="font-family: var(--font-display); font-size: 14px; font-weight: 500; color: var(--text-primary);">哲学家</span>
+            </div>
+            <p style="font-size: 11.5px; color: var(--text-muted); margin: 0; line-height: 1.4;">从第一性原理思考问题</p>
+          </div>
+
+          <div class="persona-card">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+              <span style="font-size: 18px;">🎯</span>
+              <span style="font-family: var(--font-display); font-size: 14px; font-weight: 500; color: var(--text-primary);">战略家</span>
+            </div>
+            <p style="font-size: 11.5px; color: var(--text-muted); margin: 0; line-height: 1.4;">着眼全局与长期价值</p>
+          </div>
+
+          <div class="persona-card">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+              <span style="font-size: 18px;">🎨</span>
+              <span style="font-family: var(--font-display); font-size: 14px; font-weight: 500; color: var(--text-primary);">设计师</span>
+            </div>
+            <p style="font-size: 11.5px; color: var(--text-muted); margin: 0; line-height: 1.4;">以用户体验为核心</p>
+          </div>
+
+          <div class="persona-card">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+              <span style="font-size: 18px;">⚖️</span>
+              <span style="font-family: var(--font-display); font-size: 14px; font-weight: 500; color: var(--text-primary);">仲裁者</span>
+            </div>
+            <p style="font-size: 11.5px; color: var(--text-muted); margin: 0; line-height: 1.4;">平衡各方观点的调解人</p>
+          </div>
+
+          <div class="persona-card">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+              <span style="font-size: 18px;">🌍</span>
+              <span style="font-family: var(--font-display); font-size: 14px; font-weight: 500; color: var(--text-primary);">全球化视角</span>
+            </div>
+            <p style="font-size: 11.5px; color: var(--text-muted); margin: 0; line-height: 1.4;">跨越文化边界的思考者</p>
+          </div>
+
+          <div class="persona-card">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+              <span style="font-size: 18px;">🔬</span>
+              <span style="font-family: var(--font-display); font-size: 14px; font-weight: 500; color: var(--text-primary);">科学家</span>
+            </div>
+            <p style="font-size: 11.5px; color: var(--text-muted); margin: 0; line-height: 1.4;">用实验验证理论假设</p>
+          </div>
+
+          <div class="persona-card">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+              <span style="font-size: 18px;">📚</span>
+              <span style="font-family: var(--font-display); font-size: 14px; font-weight: 500; color: var(--text-primary);">历史学家</span>
+            </div>
+            <p style="font-size: 11.5px; color: var(--text-muted); margin: 0; line-height: 1.4;">从历史经验中汲取智慧</p>
+          </div>
+
+          <div class="persona-card">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+              <span style="font-size: 18px;">🚀</span>
+              <span style="font-family: var(--font-display); font-size: 14px; font-weight: 500; color: var(--text-primary);">创业者</span>
+            </div>
+            <p style="font-size: 11.5px; color: var(--text-muted); margin: 0; line-height: 1.4;">拥抱不确定性的冒险家</p>
+          </div>
+
+        </div>
+      </div>
+
+      <hr class="gradient-divider">
+
+      <!-- Reset Button -->
+      <div style="display: flex; justify-content: center;">
+        <button style="
+          font-family: var(--font-sans);
+          font-size: 13px;
+          font-weight: 500;
+          color: var(--text-muted);
+          background: transparent;
+          border: 1px dashed var(--border-medium);
+          border-radius: var(--radius-md);
+          padding: 10px 24px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        ">重置为默认 2 人团</button>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>

@@ -98,7 +98,7 @@ export function ReportPanel() {
   return (
     <div className="space-y-5">
       <header className="flex items-center gap-2">
-        <FileText size={16} className="text-[var(--accent-gold)]" />
+        <FileText size={16} className="text-[var(--accent-primary)]" />
         <span className="font-display text-[14px] text-[var(--text-primary)]">统一结论报告</span>
       </header>
 
@@ -115,12 +115,12 @@ export function ReportPanel() {
         </Markdown>
         {report.tldrMeta && (
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-            <Chip tone="gold" size="sm">{report.tldrMeta.model || '未指定模型'}</Chip>
+            <Chip tone="primary" size="sm">{report.tldrMeta.model || '未指定模型'}</Chip>
             <Chip tone="neutral" size="sm">{report.tldrMeta.agentCount} 位角色</Chip>
             <Chip tone="neutral" size="sm">{report.tldrMeta.roundCount} 轮辩论</Chip>
             <Chip tone="neutral" size="sm">用时 {report.tldrMeta.duration}</Chip>
             {report.tldrMeta.convergence && (
-              <Chip tone="cyan" size="sm">
+              <Chip tone="emerald" size="sm">
                 收敛 {(report.tldrMeta.convergence.from * 100).toFixed(0)}%→{(report.tldrMeta.convergence.to * 100).toFixed(0)}%（{report.tldrMeta.convergence.trend}）
               </Chip>
             )}
@@ -144,7 +144,7 @@ export function ReportPanel() {
           {report.consensus.map((c, i) => (
             <li
               key={i}
-              className="text-[12px] leading-relaxed text-[var(--text-primary)]/85 pl-3 border-l-2 border-[var(--accent-gold)]/40"
+              className="text-[12px] leading-relaxed text-[var(--text-primary)]/85 pl-3 border-l-2 border-[var(--accent-primary)]/40"
             >
               {c}
             </li>
@@ -174,7 +174,7 @@ export function ReportPanel() {
           {report.actions.map((a, i) => (
             <li
               key={i}
-              className="text-[12px] leading-relaxed text-[var(--text-primary)]/85 marker:text-[var(--accent-gold)] marker:font-mono"
+              className="text-[12px] leading-relaxed text-[var(--text-primary)]/85 marker:text-[var(--accent-primary)] marker:font-mono"
             >
               {a}
             </li>
@@ -244,7 +244,7 @@ function Section({
   return (
     <section>
       <div className="flex items-baseline gap-2 mb-2.5">
-        <span className="font-mono text-[10px] text-[var(--accent-gold)]/70 tracking-widish">
+        <span className="font-mono text-[10px] text-[var(--accent-primary)]/70 tracking-widish">
           {index}
         </span>
         <span className="font-display text-[14px] text-[var(--text-primary)]">{title}</span>

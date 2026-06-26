@@ -22,7 +22,7 @@ export function Markdown({ children, className = '' }: { children: string; class
           a: ({ node, ...props }) => (
             <a
               {...props}
-              className="text-[var(--accent-cyan)] hover:text-[var(--text-primary)] transition-colors"
+              className="text-[var(--accent-emerald)] hover:text-[var(--text-primary)] transition-colors"
               target="_blank"
               rel="noreferrer"
             />

@@ -19,9 +19,9 @@ interface ButtonProps {
 
 const variantClass: Record<Variant, string> = {
   primary:
-    'bg-gradient-to-b from-[var(--accent-gold)] to-[#5A4B2D] text-white hover:brightness-110 shadow-[0_1px_0_0_rgba(255,255,255,0.18)_inset,0_10px_24px_-18px_rgba(26,26,26,0.22)]',
+    'bg-gradient-to-b from-[var(--accent-primary)] to-[var(--accent-primary-deep)] text-white hover:brightness-105 shadow-[var(--shadow-primary)]',
   secondary:
-    'border border-[var(--border-strong)] bg-[var(--bg-card)] text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-gold)]/40',
+    'border border-[var(--border-strong)] bg-[var(--bg-card)] text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-primary)]/40',
   ghost:
     'text-[var(--text-soft)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]',
   danger:
@@ -57,7 +57,7 @@ export function Button({
       whileTap={{ scale: 0.97 }}
       whileHover={disabled ? undefined : { y: -1 }}
       transition={{ duration: 0.18 }}
-      className={`group inline-flex items-center justify-center gap-2 rounded-lg font-medium
+      className={`group inline-flex items-center justify-center gap-2 rounded-xl font-medium
         ${variantClass[variant]}
         ${sizeClass[size]}
         ${fullWidth ? 'w-full' : ''}

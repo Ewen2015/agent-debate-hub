@@ -41,7 +41,7 @@ export function ConvergenceCurve({ rounds }: { rounds?: RoundSummary[] }) {
     .join(' ');
   const areaD = `${pathD} L ${x(points.length - 1).toFixed(1)} ${(padTop + innerH).toFixed(1)} L ${x(0).toFixed(1)} ${(padTop + innerH).toFixed(1)} Z`;
 
-  const gold = 'var(--accent-gold)';
+  const gold = 'var(--accent-primary)';
 
   // x 轴轮号刻度：≤10 轮逐轮标；>10 轮时每 10 轮打一次（始终含第 1 轮），避免密集遮挡。
   const shouldTick = (i: number) => points.length <= 10 || i === 0 || (i + 1) % 10 === 0;
@@ -174,7 +174,7 @@ function HoverTip({
   const tipY = above ? y - tipH - 6 : y + 8;
   const tipX = Math.max(bounds.left, Math.min(bounds.right - tipW, x - tipW / 2));
   const short = label.length > 6 ? label.slice(0, 6) + '…' : label;
-  const gold = 'var(--accent-gold)';
+  const gold = 'var(--accent-primary)';
   return (
     <g pointerEvents="none">
       <circle cx={x} cy={y} r={4.5} fill={gold} stroke="var(--bg-soft)" strokeWidth={2} />
