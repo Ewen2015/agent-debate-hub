@@ -30,14 +30,14 @@ export function AgentRing() {
       >
         <defs>
           <radialGradient id="halo" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(232,177,76,0.16)" />
-            <stop offset="60%" stopColor="rgba(232,177,76,0.04)" />
-            <stop offset="100%" stopColor="rgba(232,177,76,0)" />
+            <stop offset="0%" stopColor="rgba(0,113,227,0.16)" />
+            <stop offset="60%" stopColor="rgba(0,113,227,0.04)" />
+            <stop offset="100%" stopColor="rgba(0,113,227,0)" />
           </radialGradient>
           <linearGradient id="arc" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="rgba(154,140,255,0)" />
-            <stop offset="50%" stopColor="rgba(232,177,76,0.5)" />
-            <stop offset="100%" stopColor="rgba(95,224,199,0)" />
+            <stop offset="0%" stopColor="rgba(0,113,227,0)" />
+            <stop offset="50%" stopColor="rgba(175,82,222,0.5)" />
+            <stop offset="100%" stopColor="rgba(0,113,227,0)" />
           </linearGradient>
         </defs>
         <ellipse cx="400" cy="200" rx="360" ry="140" fill="url(#halo)" />

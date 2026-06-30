@@ -19,9 +19,9 @@ interface ButtonProps {
 
 const variantClass: Record<Variant, string> = {
   primary:
-    'bg-gradient-to-b from-[var(--accent-primary)] to-[var(--accent-primary-deep)] text-white hover:brightness-105 shadow-[var(--shadow-primary)]',
+    'bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-primary-soft)] shadow-[var(--shadow-primary)]',
   secondary:
-    'border border-[var(--border-strong)] bg-[var(--bg-card)] text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)] hover:border-[var(--accent-primary)]/40',
+    'border border-[var(--border-soft)] bg-[var(--bg-soft)] text-[var(--text-primary)] hover:bg-[var(--bg-muted)]',
   ghost:
     'text-[var(--text-soft)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]',
   danger:
@@ -31,8 +31,8 @@ const variantClass: Record<Variant, string> = {
 };
 
 const sizeClass: Record<Size, string> = {
-  sm: 'px-3 py-1.5 text-xs',
-  md: 'px-4 py-2 text-sm',
+  sm: 'px-3.5 py-1.5 text-xs',
+  md: 'px-5 py-2 text-sm',
   lg: 'px-6 py-2.5 text-[15px]',
 };
 
@@ -57,7 +57,7 @@ export function Button({
       whileTap={{ scale: 0.97 }}
       whileHover={disabled ? undefined : { y: -1 }}
       transition={{ duration: 0.18 }}
-      className={`group inline-flex items-center justify-center gap-2 rounded-xl font-medium
+      className={`group inline-flex items-center justify-center gap-2 rounded-full font-medium
         ${variantClass[variant]}
         ${sizeClass[size]}
         ${fullWidth ? 'w-full' : ''}

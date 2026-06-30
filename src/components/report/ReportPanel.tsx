@@ -21,7 +21,7 @@ export function ReportPanel() {
   if (!report) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="w-12 h-12 rounded-full border border-cream-50/15 flex items-center justify-center mb-3">
+        <div className="w-12 h-12 rounded-full border border-[var(--border-soft)] flex items-center justify-center mb-3">
           <FileText size={20} className="text-[var(--text-primary)]/30" />
         </div>
         <div className="font-display text-[14px] text-[var(--text-primary)]/80">尚未生成报告</div>

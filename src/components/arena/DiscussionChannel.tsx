@@ -33,9 +33,9 @@ type TimelineItem =
 const LONG_TEXT = 180;
 
 const STANCE_META: Record<AgentStance, { label: string; tone: Tone; color: string }> = {
-  pro: { label: '支持', tone: 'primary', color: '#D97757' },
-  con: { label: '反对', tone: 'rose', color: '#D45B5B' },
-  neutral: { label: '中立', tone: 'emerald', color: '#7BA05B' },
+  pro: { label: '支持', tone: 'primary', color: '#0071E3' },
+  con: { label: '反对', tone: 'rose', color: '#FF3B30' },
+  neutral: { label: '中立', tone: 'emerald', color: '#34C759' },
 };
 
 const formatTime = (ts: number) => {
