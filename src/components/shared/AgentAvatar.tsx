@@ -11,20 +11,21 @@ interface AgentAvatarProps {
   isActive?: boolean;
 }
 
+// Apple-style system status hues — refined, slightly desaturated.
 const STATUS_COLOR_LIGHT: Record<AgentStatus, string> = {
   idle: 'rgba(20, 24, 36, 0.18)',
-  thinking: '#7A6A45',
-  searching: '#2C5F5D',
-  speaking: '#3E4A6B',
-  paused: '#9F4A3C',
+  thinking: '#0A84FF',
+  searching: '#34C759',
+  speaking: '#5E5CE6',
+  paused: '#FF9500',
 };
 
 const STATUS_COLOR_DARK: Record<AgentStatus, string> = {
   idle: 'rgba(255,255,255,0.18)',
-  thinking: '#B8A878',
-  searching: '#6FB3A8',
+  thinking: '#64D2FF',
+  searching: '#30D158',
   speaking: '#8B95B8',
-  paused: '#D08877',
+  paused: '#FF9F0A',
 };
 
 export function AgentAvatar({
@@ -37,10 +38,25 @@ export function AgentAvatar({
   const persona = resolvePersona(agent);
   const [c1, c2] = persona.gradient;
   const theme = useThemeStore((s) => s.theme);
-  const map = theme === 'dark' ? STATUS_COLOR_DARK : STATUS_COLOR_LIGHT;
+  const isDark = theme === 'dark';
+  const map = isDark ? STATUS_COLOR_DARK : STATUS_COLOR_LIGHT;
   const ringColor = map[agent.status as AgentStatus] || map.idle;
-  const activeColor = theme === 'dark' ? '#B8A878' : '#7A6A45';
-  const overlayLight = theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.35)';
+  const showStatus = showStatusRing && agent.status !== 'idle';
+
+  // Layered, luminous gradient — Apple app-icon feel: a soft radial light
+  // bloom anchored top-left, flowing into the persona gradient.
+  const surface = `
+    radial-gradient(120% 120% at 28% 22%, ${c1} 0%, ${c2} 62%, ${c2} 100%)
+  `;
+
+  // Neutral, soft drop shadow (not persona-tinted) + refined inner light edge.
+  const shadow = isActive
+    ? `0 0 0 2px var(--accent-primary), 0 6px 18px -6px rgba(0,0,0,${isDark ? 0.6 : 0.28})`
+    : `0 1px 2px rgba(0,0,0,${isDark ? 0.4 : 0.10}), 0 6px 16px -6px rgba(0,0,0,${isDark ? 0.55 : 0.22})`;
+
+  const innerBorder = isDark
+    ? 'inset 0 1px 0.5px rgba(255,255,255,0.28), inset 0 0 0 1px rgba(255,255,255,0.10)'
+    : 'inset 0 1px 0.5px rgba(255,255,255,0.55), inset 0 0 0 1px rgba(255,255,255,0.14)';
 
   return (
     <motion.button
@@ -54,42 +70,50 @@ export function AgentAvatar({
         className="relative"
         style={{ width: size, height: size }}
       >
-        {showStatusRing && agent.status !== 'idle' && (
+        {/* Breathing status halo — soft, Apple-style glow instead of a hard ping. */}
+        {showStatus && (
           <span
-            className="absolute inset-[-6px] rounded-full pointer-events-none"
+            className="absolute rounded-full pointer-events-none"
             style={{
-              boxShadow: `0 0 0 1.5px ${ringColor}, 0 0 18px -2px ${ringColor}`,
+              inset: -Math.max(4, size * 0.1),
+              background: `radial-gradient(circle, ${ringColor} 0%, transparent 68%)`,
+              opacity: 0.55,
+              animation: 'breathe-soft 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
             }}
           />
         )}
-        {showStatusRing && agent.status !== 'idle' && (
-          <span
-            className="absolute inset-[-6px] rounded-full pointer-events-none"
-            style={{
-              boxShadow: `0 0 0 1.5px ${ringColor}`,
-              animation: 'ping-soft 1.6s cubic-bezier(0,0,0.2,1) infinite',
-            }}
-          />
-        )}
+
+        {/* The glass disc */}
         <div
           className="relative w-full h-full rounded-full overflow-hidden flex items-center justify-center"
           style={{
-            background: `linear-gradient(135deg, ${c1}, ${c2})`,
-            boxShadow: isActive
-              ? `0 0 0 2px ${activeColor}, 0 6px 24px -8px ${c1}`
-              : `0 6px 24px -8px ${c1}, inset 0 1px 0 ${overlayLight}`,
+            background: surface,
+            boxShadow: `${shadow}, ${innerBorder}`,
           }}
         >
+          {/* Top specular sheen — soft elliptical highlight, not a hard stripe. */}
           <div
             className="absolute inset-0"
             style={{
               background:
-                'linear-gradient(135deg, rgba(0,0,0,0.12), transparent 50%, rgba(255,255,255,0.18))',
+                'radial-gradient(140% 90% at 50% -10%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.12) 38%, transparent 60%)',
+            }}
+          />
+          {/* Lower ambient shading for spherical depth. */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(180deg, transparent 55%, rgba(0,0,0,0.16) 100%)',
             }}
           />
           <span
             className="relative font-display text-white"
-            style={{ fontSize: size * 0.42, textShadow: '0 1px 2px rgba(0,0,0,0.25)' }}
+            style={{
+              fontSize: size * 0.44,
+              fontWeight: 500,
+              textShadow: '0 1px 1.5px rgba(0,0,0,0.22)',
+            }}
           >
             {persona.emoji}
           </span>
