@@ -4,12 +4,14 @@
  * 安全模型（关键）：
  *  - 只读取 VITE_LANGFUSE_PUBLIC_KEY（public key 可安全暴露在前端 bundle）。
  *  - 绝不 import / 读取 LANGFUSE_SECRET_KEY —— 该变量无 VITE_ 前缀，Vite 不会内联，
- *    且本文件不引用它。secret key 仅在 scripts/eval/ 下的 Node 评测脚本中使用。
+ *    且本文件不引用它。secret key 仅在 dev server（langfuseProxyPlugin）与 scripts/eval/ 中使用。
  *  - 未配置 public key 时返回 null，LangGraph 子图与 speak() 仍正常运行，只是不上报 trace。
  *
- * 直连 cloud.langfuse.com（已验证 CORS 放行 localhost:5173）。
- * 自托管实例若无 CORS，可在 vite.config.ts 加 langfuseProxyPlugin 并把
- * VITE_LANGFUSE_BASE_URL 指向 /langfuse-proxy（默认不开）。
+ * 摄取路径（关键）：Langfuse 的 trace/generation 摄取要求 Basic auth（public:secret），
+ * public key 单独会被拒 401。因此浏览器不能直连 Langfuse 摄取 trace。
+ * 这里把 baseUrl 指向 dev server 的 /langfuse-proxy，由 vite.config.ts 的
+ * langfuseProxyPlugin 注入 server 端 Basic auth 转发。secret key 只在 dev server 进程内。
+ * 仅 dev 可用；生产需另起后端代理。
  */
 
 import { Langfuse } from 'langfuse';
@@ -33,7 +35,9 @@ export function initLangfuse(): Langfuse | null {
     return null;
   }
 
-  const baseUrl = meta.env?.VITE_LANGFUSE_BASE_URL?.trim() || 'https://cloud.langfuse.com';
+  // baseUrl 默认指向 dev server 代理（/langfuse-proxy），由 vite 中间件注入 secret key 转发。
+  // 可用 VITE_LANGFUSE_BASE_URL 覆盖（如指向自建后端代理）。
+  const baseUrl = meta.env?.VITE_LANGFUSE_BASE_URL?.trim() || '/langfuse-proxy';
 
   try {
     client = new Langfuse({
