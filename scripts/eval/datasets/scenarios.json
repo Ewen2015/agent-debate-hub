@@ -1,0 +1,23 @@
+[
+  {
+    "id": "scenario-ai-regulation",
+    "question": "是否应该对通用人工智能实施严格的事前监管？",
+    "background": "近年来大模型能力快速提升，引发对安全与创新的平衡之争。",
+    "agents": [
+      { "personaId": "tech-optimist", "stance": "pro" },
+      { "personaId": "risk-skeptic", "stance": "con" },
+      { "personaId": "policy-pragmatist", "stance": "neutral" }
+    ],
+    "maxRounds": 2
+  },
+  {
+    "id": "scenario-remote-work",
+    "question": "远程办公是否应成为企业的默认选项？",
+    "background": "疫情后混合办公成为新常态，但协作效率与文化凝聚力存在争议。",
+    "agents": [
+      { "personaId": "flexibility-advocate", "stance": "pro" },
+      { "personaId": "collaboration-defender", "stance": "con" }
+    ],
+    "maxRounds": 3
+  }
+]

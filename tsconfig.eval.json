@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": ["ES2023"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "noEmit": true,
+    "strict": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["scripts/eval/**/*.ts", "src/engine/convergence.ts", "src/engine/textUtils.ts", "src/engine/viewpointQuality.ts", "src/types/index.ts"]
+}

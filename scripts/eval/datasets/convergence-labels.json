@@ -1,0 +1,9 @@
+{
+  "sessions": {
+    "_example_session_id": [
+      { "round": 0, "humanConvergence": 0.15 },
+      { "round": 1, "humanConvergence": 0.35 },
+      { "round": 2, "humanConvergence": 0.55 }
+    ]
+  }
+}

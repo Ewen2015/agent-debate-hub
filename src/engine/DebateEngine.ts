@@ -20,8 +20,10 @@ import { resolveLLMConfig } from '@/engine/LLMConfig';
 import { useRosterStore } from '@/store/staticStores';
 import { useSessionStore } from '@/store/sessionStore';
 import type { DebateEvent, RosterAgent, RoundSummary, RoundViewpoint, Source, Speech } from '@/types';
-import { isSearchResolverConfigured, resolveSource } from '@/engine/SearchResolver';
+import { isSearchResolverConfigured } from '@/engine/SearchResolver';
 import { logger, logBreakpoint } from '@/engine/logger';
+import { flushLangfuse, getLangfuse } from '@/engine/langfuse';
+import { isQualityViewpoint as qualityIsQualityViewpoint, deCopy, extractiveCompress } from '@/engine/viewpointQuality';
 
 const uid = () => Math.random().toString(36).slice(2, 11);
 const delay = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
@@ -272,6 +274,16 @@ async function summarizeRound(
 
   const question = useSessionStore.getState().session.question;
 
+  // ── Langfuse round-summary trace（可选，供 eval 目标 #2 / #3 消费）──
+  const lf = getLangfuse();
+  const sessionId = useSessionStore.getState().activeSessionId;
+  const roundTrace = lf?.trace({
+    name: `round-summary:${round}`,
+    sessionId,
+    input: { round, title, question, speechCount: speeches.length, convergence },
+    tags: [sessionId, `round-${round}`, 'summary'],
+  });
+
   // 原文文本与词集，用于检测 LLM 是否照搬
   const origTextMap = new Map<string, string>();
   const origTokens = new Map<string, Set<string>>();
@@ -281,28 +293,22 @@ async function summarizeRound(
   }
 
   /**
-   * 校验单条 viewpoint 质量：存在、非空、且不是照搬原句。
-   * 照搬判定（参数化，支持分级放宽）：
-   *  - 提炼结果中若含 ≥minCopyLen 字的连续片段原样出现在原文中 → 照搬
-   *  - 或与原文词集 Jaccard ≥ maxJaccard → 照搬
-   * 满足任一即判不达标。
+   * 校验单条 viewpoint 质量（照搬检测）—— 委托给共享纯函数 viewpointQuality。
+   * 保留按 agentId 查原文/词集的便捷封装，行为与重构前一致。
    */
   const isQualityViewpoint = (
     agentId: string,
     vp: string | undefined,
     minCopyLen = 5,
     maxJaccard = 0.6,
-  ): boolean => {
-    if (!vp || !vp.trim()) return false;
-    const v = vp.trim();
-    if (v.length < 4) return false;
-    const orig = origTextMap.get(agentId) || '';
-    for (let i = 0; i + minCopyLen <= v.length; i++) {
-      if (orig.includes(v.slice(i, i + minCopyLen))) return false;
-    }
-    const sim = jaccard(tokenize(v), origTokens.get(agentId) ?? new Set());
-    return sim < maxJaccard;
-  };
+  ): boolean =>
+    qualityIsQualityViewpoint(
+      vp,
+      origTextMap.get(agentId) || '',
+      origTokens.get(agentId) ?? new Set(),
+      minCopyLen,
+      maxJaccard,
+    );
 
   // 带超时的 chat 调用（30s），避免总结阶段卡死整个辩论流程
   const chatWithTimeout = async (system: string, user: string): Promise<string | null> => {
@@ -320,47 +326,6 @@ async function summarizeRound(
     } finally {
       clearTimeout(timer);
     }
-  };
-
-  /** 算法去重：从 LLM 输出中删掉与原文连续 ≥5 字重合的片段，保留改写部分。 */
-  const deCopy = (text: string, original: string): string => {
-    if (!text) return '';
-    const N = 5;
-    const remove = new Set<number>();
-    for (let i = 0; i + N <= text.length; i++) {
-      if (original.includes(text.slice(i, i + N))) {
-        for (let j = i; j < i + N; j++) remove.add(j);
-      }
-    }
-    let out = '';
-    for (let i = 0; i < text.length; i++) {
-      if (remove.has(i)) {
-        if (out && !out.endsWith(' ')) out += ' ';
-      } else {
-        out += text[i];
-      }
-    }
-    return out.replace(/\s+/g, ' ').trim();
-  };
-
-  /**
-   * 提取式压缩兜底（保证总有总结）：去套话前缀，取首个分句，压到 40 字内。
-   * 这是当 LLM 改写全部失败时的最后保底——产出的是压缩摘录，而非「未能提炼」。
-   */
-  const extractiveCompress = (text: string): string => {
-    let t = stripLLMArtifacts(text || '').replace(/\s+/g, ' ').trim();
-    if (!t) return '（发言为空）';
-    // 去常见前缀套话
-    t = t
-      .replace(/^（[^）]*）/, '')
-      .replace(/^回应[^，。！？]*[，。！？]/, '')
-      .replace(/^兼听[^「]*「[^」]*」[，。！？]?/, '')
-      .replace(/^我参考的资料是[\s\S]*?(?=[，。！？]|$)/, '')
-      .trim();
-    // 取首个分句
-    const m = t.match(/^[^，。！；]+[，。！；]?/);
-    if (m) t = m[0].trim();
-    return t || '（发言过短）';
   };
 
   /**
@@ -381,10 +346,22 @@ async function summarizeRound(
         ? `\n\n[重要] 你上次的输出与原文过于雷同。请完全换一种表述，只用同义改写，杜绝任何原文连续片段，像在向没读过原文的人转述一样。`
         : '';
       const usr = `议题：${question}\n发言者：${name}（${sp.stance}）\n发言原文：\n${originText}\n\n请提炼一句核心观点（第三人称、用自己的话改写、禁止照搬原句连续片段）：${emphasis}`;
+      // Langfuse：每次提炼尝试作为一个 generation，供 eval-viewpoint 评测
+      const gen = roundTrace?.generation({
+        name: `viewpoint-extraction:${sp.agentId}`,
+        model: cfg.model,
+        input: { attempt, question, name, stance: sp.stance, originText },
+        metadata: { agentId: sp.agentId, attempt },
+      });
       const raw = await chatWithTimeout(baseSys, usr);
-      if (!raw) return null;
+      if (!raw) {
+        gen?.update({ output: null, metadata: { failed: true } });
+        return null;
+      }
       const line = raw.split(/\r?\n/).map((s) => s.trim()).find((s) => s.length > 0) || raw.trim();
-      return line.replace(/^[「『""'']+|[」』""'']+$/g, '').replace(/^(观点|总结|核心观点)[：:]\s*/i, '').trim();
+      const vp = line.replace(/^[「『""'']+|[」』""'']+$/g, '').replace(/^(观点|总结|核心观点)[：:]\s*/i, '').trim();
+      gen?.update({ output: vp, metadata: { originText, agentId: sp.agentId, attempt } });
+      return vp;
     };
 
     // 三级尝试，记录每级结果
@@ -444,95 +421,15 @@ async function summarizeRound(
   ]);
 
   // 已并发算出 viewpoints/digest，即便被停止也返回已有结果（保证有总结），不覆盖为 fallback
+  roundTrace?.update({
+    output: { digest, viewpoints: viewpoints.map((v) => ({ agentId: v.agentId, viewpoint: v.viewpoint })), convergence },
+  });
+  void flushLangfuse();
   return { round, title, digest, viewpoints, convergence };
 }
 
-// ── 多轮 function calling 循环：让 LLM 自己决定搜几次 ──
-// 对于 Anthropic / Ark，原生搜索在 chat() 内部完成，不会进入 tool call 循环。
-async function chatWithTools(
-  cfg: LLMConfig,
-  messages: ChatMessage[],
-  abort: AbortSignal,
-  actorAgentId: string,
-  onReasoning: (r: string) => void,
-): Promise<{ final: string; reasoning: string; sources: Source[] }> {
-  let m = [...messages];
-  let aggregatedReasoning = '';
-  const sources: Source[] = [];
-  for (let i = 0; i < 4; i++) {
-    if (abort.aborted) throw new Error('aborted');
-    const resp = await chat(cfg, m, { signal: abort, onReasoning: (r) => (aggregatedReasoning = r) });
-    onReasoning(resp.reasoning || '');
-
-    // 捕获原生搜索返回的 sources（Anthropic）
-    if (resp.sources?.length) {
-      const mapped: Source[] = resp.sources.map((s) => ({
-        title: s.title,
-        url: s.url,
-        domain: s.domain,
-        snippet: s.snippet || '',
-      }));
-      sources.push(...mapped);
-      pushEvent({
-        id: uid(),
-        ts: Date.now(),
-        agentId: actorAgentId,
-        type: 'search',
-        payload: { text: '', sources: mapped },
-      });
-    }
-
-    if (!resp.toolCalls?.length) {
-      return { final: resp.content, reasoning: aggregatedReasoning, sources };
-    }
-    // 把 tool_calls 追加到历史
-    m = [
-      ...m,
-      {
-        role: 'assistant',
-        content: resp.content || '',
-        tool_calls: resp.toolCalls.map((tc) => ({
-          id: tc.id,
-          type: 'function' as const,
-          function: { name: tc.name, arguments: JSON.stringify(tc.arguments) },
-        })),
-      },
-    ];
-    // 执行 web_search（仅 OpenAI 兼容 Provider 会走到这里）
-    for (const tc of resp.toolCalls) {
-      if (tc.name !== 'web_search') continue;
-      const query = (tc.arguments as any).query || '';
-      const recency = (tc.arguments as any).recency_days;
-      const resolved = await resolveSource(query, recency);
-      if (resolved.length) {
-        sources.push(...resolved);
-        pushEvent({
-          id: uid(),
-          ts: Date.now(),
-          agentId: actorAgentId,
-          type: 'cite',
-          payload: { text: '', sources: resolved },
-        });
-      }
-      const toolResult = resolved
-        .map(
-          (s) =>
-            `【${s.title}】 ${s.url}（${s.domain}）\n摘要：${s.snippet || ''}`,
-        )
-        .join('\n\n');
-      m = [
-        ...m,
-        {
-          role: 'tool',
-          tool_call_id: tc.id,
-          name: 'web_search',
-          content: toolResult || '（未检索到相关资料）',
-        },
-      ];
-    }
-  }
-  return { final: m[m.length - 1]?.content || '', reasoning: aggregatedReasoning, sources };
-}
+// ── agent 核心（speak + 多轮 function calling 循环）已重构为 LangGraph 子图 ──
+// 见 src/engine/graph/AgentGraph.ts。speak() 负责组装输入、建 Langfuse trace、调用子图。
 
 const pushEvent = (e: DebateEvent) => {
   useSessionStore.getState().pushEvent(e);
@@ -1095,8 +992,10 @@ interface SpeakResult {
 }
 
 /**
- * 调用真实 LLM。不使用 Mock 模式。
- * 如果 LLM 不可用，抛出错误并在事件流中提示。
+ * 调用真实 LLM（通过 LangGraph 子图）。不使用 Mock 模式。
+ * 预检索 / 多轮 function calling / Anthropic 原生搜索 全部在子图内完成；
+ * speak 只负责组装输入、建 Langfuse trace、Anthropic 无 sources 重试策略。
+ * 签名与返回值与重构前一致，三处调用点零改动。
  */
 async function speak(
   agent: RosterAgent,
@@ -1115,52 +1014,59 @@ async function speak(
 
     const session = useSessionStore.getState().session;
     const persona = resolvePersona(agent);
-    const preSources: Source[] = [];
 
-    // 联网检索（可选）：Anthropic 原生联网；其他 Provider 需配置 Tavily/Serper
+    // 联网检索就绪判定（与重构前一致）
     const searchReady = cfg.enableSearch && (kind === 'anthropic' || isSearchResolverConfigured());
 
-    if (kind !== 'anthropic' && searchReady) {
-      const lastOpponent = session.speeches
-        .slice()
-        .reverse()
-        .find((s) => s.agentId !== agent.id && s.round === round)?.text;
-      const query = [
-        session.question,
-        session.background ? `背景：${session.background}` : '',
-        lastOpponent ? `对方观点：${lastOpponent.slice(0, 80)}` : '',
-        '最新 数据 报告 案例',
-      ]
-        .filter(Boolean)
-        .join('；');
+    // 上一轮对方最后一条发言，供子图拼检索 query
+    const lastOpponentText = session.speeches
+      .slice()
+      .reverse()
+      .find((s) => s.agentId !== agent.id && s.round === round)?.text;
 
-      const resolved = await resolveSource(query, 365);
-      if (resolved.length) {
-        preSources.push(...resolved);
-        pushEvent({
-          id: uid(),
-          ts: Date.now(),
-          agentId: agent.id,
-          type: 'cite',
-          payload: { text: '', sources: resolved },
-        });
-        history.push({
-          role: 'user',
-          content:
-            `以下为联网检索结果（请引用来源；不要编造）：\n\n` +
-            resolved
-              .map((s) => `【${s.title}】 ${s.url}（${s.domain}）\n摘要：${s.snippet || ''}`)
-              .join('\n\n'),
-        });
-      }
-    } else if (kind === 'anthropic' && searchReady) {
-      history.push({
-        role: 'user',
-        content:
-          '在输出 <answer> 之前，请尝试调用 web_search 获取最新资料，并在回答中引用来源。',
+    // ── Langfuse trace（可选）──
+    const lf = getLangfuse();
+    const trace = lf?.trace({
+      name: `speech:${persona.name}`,
+      sessionId: session.id,
+      userId: agent.id,
+      input: { question: session.question, round, stance: persona.stance },
+      metadata: {
+        agentId: agent.id,
+        agentName: persona.name,
+        stance: persona.stance,
+        round,
+        model: cfg.model,
+        providerKind: kind,
+        enableSearch: cfg.enableSearch,
+        searchReady,
+      },
+      tags: [session.id, `round-${round}`, agent.id, persona.stance],
+    });
+
+    // ── 回调：沿用现有 pushEvent 事件流，保持 UI 行为一致 ──
+    const onReasoning = (r: string) => {
+      if (!r) return;
+      pushEvent({
+        id: uid(),
+        ts: Date.now(),
+        agentId: agent.id,
+        type: 'think',
+        payload: { text: r, subText: `${persona.name} 实时思考` },
       });
-    } else if (cfg.enableSearch && kind !== 'anthropic' && !isSearchResolverConfigured()) {
-      // 每会话只提示一次，避免对话框被重复的系统信息刷屏
+    };
+    const onCite = (sources: Source[], evType: 'cite' | 'search' = 'cite') => {
+      if (!sources.length) return;
+      pushEvent({
+        id: uid(),
+        ts: Date.now(),
+        agentId: agent.id,
+        type: evType,
+        payload: { text: '', sources },
+      });
+    };
+    const onSearchNoKey = () => {
+      // 每会话只提示一次，避免对话框被重复系统信息刷屏
       if (!searchKeyMissingNotified) {
         searchKeyMissingNotified = true;
         pushEvent({
@@ -1171,22 +1077,26 @@ async function speak(
           payload: { text: '未配置搜索 Key，本轮辩论将不联网检索（可在网关配置 Tavily/Serper）' },
         });
       }
-    }
+    };
 
-    const runOnce = async () =>
-      chatWithTools(cfg, history, ctrl.signal, agent.id, (r: string) => {
-        if (r) {
-          pushEvent({
-            id: uid(),
-            ts: Date.now(),
-            agentId: agent.id,
-            type: 'think',
-            payload: { text: r, subText: `${persona.name} 实时思考` },
-          });
-        }
-      });
+    let result = await (await import('@/engine/graph/AgentGraph')).runAgentGraph({
+      messages: history,
+      cfg,
+      agent,
+      agentName: persona.name,
+      stance: persona.stance,
+      round,
+      sessionId: session.id,
+      question: session.question,
+      background: session.background,
+      lastOpponentText,
+      abort: ctrl.signal,
+      trace: trace ?? undefined,
+      onReasoning,
+      onCite,
+      onSearchNoKey,
+    });
 
-    let result = await runOnce();
     // 对 Anthropic 且已开启搜索：若未返回 sources，提示一次并重试
     if (searchReady && kind === 'anthropic' && result.sources.length === 0) {
       pushEvent({
@@ -1200,10 +1110,33 @@ async function speak(
         role: 'user',
         content: '你上一轮没有返回任何 sources。请使用 web_search 获取至少 1 条来源，并在 <answer> 中引用。',
       });
-      result = await runOnce();
+      result = await (await import('@/engine/graph/AgentGraph')).runAgentGraph({
+        messages: history,
+        cfg,
+        agent,
+        agentName: persona.name,
+        stance: persona.stance,
+        round,
+        sessionId: session.id,
+        question: session.question,
+        background: session.background,
+        lastOpponentText,
+        abort: ctrl.signal,
+        trace: trace ?? undefined,
+        retry: true,
+        onReasoning,
+        onCite,
+        onSearchNoKey,
+      });
     }
 
-    return { final: result.final, sources: [...preSources, ...result.sources] };
+    trace?.update({
+      output: { final: result.final.slice(0, 500), sourcesCount: result.sources.length },
+      metadata: { sourcesCount: result.sources.length, retried: kind === 'anthropic' && searchReady },
+    });
+    void flushLangfuse();
+
+    return { final: result.final, sources: result.sources };
   } catch (e: any) {
     if (e instanceof LLMError) {
       pushEvent({
