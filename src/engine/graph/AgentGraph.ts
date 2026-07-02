@@ -15,7 +15,7 @@
  */
 
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
-import type { LangfuseTraceClient } from 'langfuse';
+import type { LangfuseGenerationClient, LangfuseTraceClient } from 'langfuse';
 import { chat, type ChatMessage, type LLMConfig, type LLMResponse } from '@/engine/LLMClient';
 import { isSearchResolverConfigured, resolveSource } from '@/engine/SearchResolver';
 import type { AgentStance, RosterAgent, Source } from '@/types';
@@ -57,6 +57,7 @@ const graphState = Annotation.Root({
   iteration: Annotation<number>(),
   pendingToolCalls: Annotation<NonNullable<LLMResponse['toolCalls']> | undefined>(),
   lastResponse: Annotation<LLMResponse | undefined>(),
+  lastGenClient: Annotation<LangfuseGenerationClient | undefined>(),
   workingMessages: Annotation<ChatMessage[]>(),
 });
 
@@ -68,6 +69,7 @@ const DEFAULTS = {
   iteration: 0,
   pendingToolCalls: undefined,
   lastResponse: undefined,
+  lastGenClient: undefined,
   workingMessages: [] as ChatMessage[],
 };
 
@@ -182,6 +184,7 @@ async function llmCallNode(state: typeof graphState.State): Promise<Partial<type
       lastResponse: resp,
       sources,
       pendingToolCalls: undefined,
+      lastGenClient: gen,
       iteration,
     };
   }
@@ -203,6 +206,7 @@ async function llmCallNode(state: typeof graphState.State): Promise<Partial<type
     workingMessages,
     lastResponse: resp,
     pendingToolCalls: resp.toolCalls,
+    lastGenClient: gen,
     sources,
     iteration,
   };
@@ -218,7 +222,10 @@ async function toolExecNode(state: typeof graphState.State): Promise<Partial<typ
     if (tc.name !== 'web_search') continue;
     const query = (tc.arguments as any)?.query || '';
     const recency = (tc.arguments as any)?.recency_days;
-    const span = state.trace?.span({
+    // 嵌套在触发它的 llm-call generation 之下（gen.span 自动设 parentObservationId），
+    // 退而求其次平铺在 trace 下。体现「多步操作正确嵌套」的最佳实践。
+    const parent = state.lastGenClient ?? state.trace;
+    const span = parent?.span({
       name: 'web-search',
       input: { query, recency },
       metadata: { toolCallId: tc.id },

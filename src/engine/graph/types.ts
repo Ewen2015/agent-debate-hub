@@ -14,7 +14,7 @@
  *    节点用 trace?.span(...) 模式无副作用跳过。
  */
 
-import type { LangfuseTraceClient } from 'langfuse';
+import type { LangfuseGenerationClient, LangfuseTraceClient } from 'langfuse';
 import type { ChatMessage, LLMConfig, LLMResponse } from '@/engine/LLMClient';
 import type { AgentStance, RosterAgent, Source } from '@/types';
 
@@ -66,6 +66,12 @@ export interface AgentGraphState extends AgentGraphInput {
   pendingToolCalls?: NonNullable<LLMResponse['toolCalls']>;
   /** 上一轮 LLM 响应（用于 toolExec 后取 final）。 */
   lastResponse?: LLMResponse;
+  /**
+   * 上一轮 llm-call 的 Langfuse generation 客户端。
+   * toolExec 用它创建 web-search 子 span，使 trace 呈现正确的层级
+   * （web-search 嵌套在触发它的 llm-call generation 之下，而非平铺在 trace 下）。
+   */
+  lastGenClient?: LangfuseGenerationClient;
 }
 
 /** 子图返回结果（与 speak 重构前的 SpeakResult 对齐）。 */
